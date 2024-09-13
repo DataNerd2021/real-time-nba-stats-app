@@ -1,0 +1,4 @@
+nba_api
+pandas
+pandavro
+tqdm
