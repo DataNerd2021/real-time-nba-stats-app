@@ -19,6 +19,6 @@
 
 ### ***Project Outline***
 #### **Minimum Viable Product (MVP)**: 
-> Produce a mobile application that enables user's to see game plays in real-time and showcases the player on each team with the highest PIE score by each play.
+> Produce a mobile application that enables users to see game plays in real-time and showcases the player on each team with the highest PIE score by each play.
 #### **Goal**:
 > MVP plus an integrated probabilistic model that predicts the game winner and outputs an inference as new plays get ingested.
