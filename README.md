@@ -1,1 +1,1 @@
-# real-time-nba-win-predictor
+# Real-Time NBA Game Winner Prediction App
