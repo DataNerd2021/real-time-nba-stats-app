@@ -22,3 +22,4 @@
 > Produce a mobile application that enables users to see game plays in real-time and showcases the player on each team with the highest PIE score by each play.
 #### **Goal**:
 > MVP plus an integrated probabilistic model that predicts the game winner and outputs an inference as new plays get ingested.
+> **Stretch Goal**: Become Certified in Kafka, dbt, and Snowflake by May 2025.
