@@ -2,7 +2,7 @@ nba_api
 pandas
 pandavro
 tqdm
-confluent-kafka
+kafka-python
 flask
 transformers
 accelerate
