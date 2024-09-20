@@ -1,4 +1,4 @@
-version: '2'
+version: '3'
 
 services:
   zookeeper:
@@ -20,6 +20,19 @@ services:
       - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
     depends_on:
       - zookeeper
+  ksqldb-server:
+    image: confluentinc/ksqldb-server:latest
+    ports:
+      - "8088:8088"
+    environment:
+      - KSQL_KSQL_STREAMS_BOOTSTRAP_SERVERS=kafka:9092
+      - KSQL_KSQL_LISTENER=http://0.0.0.0:8088
+    depends_on:
+      - kafka
+  ksqldb-cli:
+    image: confluentinc/ksqldb-cli:latest
+    depends_on:
+      - ksqldb-server
 networks:
   default:
     driver: bridge
