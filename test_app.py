@@ -46,11 +46,14 @@ def main():
 
                 # Convert plays to DataFrame
                 df = pd.DataFrame(list(plays))
-
-                # Update the placeholder with the new data
+                df = df.drop(columns=['actionNumber'])
+                df['clock'] = df['clock'].str.replace('PT', '')
+                df['clock'] = df['clock'].str.replace('M', ':')
+                df['clock'] = df['clock'].str.replace('S', '')
+                df.rename(columns={'clock':'Time Remaining', 'qualifiers':'tags', 'scoreAway': 'Away', 'scoreHome':'Home', 'period':'Period'}, inplace=True)
                 with placeholder.container():
-                    st.header(f"Score: {df.iloc[0]['scoreHome']} - {df.iloc[0]['scoreAway']}")
-                    st.dataframe(df)
+                    st.header(f"Score: {df.iloc[0]['Home']} - {df.iloc[0]['Away']}")
+                    st.dataframe(df[['Period', 'Time Remaining', 'description', 'tags']])
             except json.JSONDecodeError:
                 st.warning(f"Error decoding JSON: {msg.value()}")
 
