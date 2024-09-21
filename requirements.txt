@@ -3,3 +3,4 @@ pandas
 pandavro
 tqdm
 confluent-kafka
+pyarrow
