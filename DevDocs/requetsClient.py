@@ -19,10 +19,4 @@ headers = {
 
 response = requests.get(url, headers=headers, params=params)
 
-if response.status_code == 200:
-    data = response.json()
-    
-    # Pretty print the JSON response with indentation
-    print(json.dumps(data, indent=4))
-else:
-    print(f"Failed to fetch data: {response.status_code}")
+
