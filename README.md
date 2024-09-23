@@ -2,9 +2,9 @@
 
 ##### **Participants: Chase Pattee, Daymon Hansen**
 
-##Project High Level Overview link
+## Project High Level Overview
 
-- https://lucid.app/lucidchart/8ad72a94-9bd1-424f-b097-f3e357ca7765/edit?page=0_0#
+- ![Screenshot of a comment on a GitHub issue showing an image, added in the Markdown, of an Octocat smiling and raising a tentacle.](High Level Outline.png)
 
 ## **_Project Description_**
 
