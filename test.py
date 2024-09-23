@@ -32,7 +32,7 @@ def fetch_game_plays(game_id):
 
         play_messages = []
         for play in game_plays:
-            fields = ['actionNumber', 'period', 'description', 'clock', 'qualifiers', 'scoreAway', 'scoreHome']
+            fields = ['actionNumber', 'period', 'description', 'clock', 'qualifiers', 'scoreAway', 'scoreHome', 'x', 'y']
             play_message = {field: play.get(field) for field in fields}
             play_messages.append(play_message)
             print(play_message)

@@ -1,10 +1,23 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 from confluent_kafka import Consumer, KafkaError
 import json
 from collections import deque
 import re
+
+TAG_MAPPING = {
+    "fastbreak": "Fast Break",
+    "secondchancepoints": "Second Chance Points",
+    "pointsinthepaint": "Points in the Paint",
+    "leadchange": "Lead Change",
+    "tiedscore": "Tied Score",
+    "turnover": "Turnover",
+    # Add more mappings as needed
+}
+
+def clean_tag(tag):
+    """Map a tag to its cleaned version or capitalize if not in mapping."""
+    return TAG_MAPPING.get(tag.lower(), tag.capitalize())
 
 def create_kafka_consumer():
     """Create and return a Kafka consumer instance."""
@@ -14,23 +27,6 @@ def create_kafka_consumer():
         'auto.offset.reset': 'earliest'
     }
     return Consumer(conf)
-
-TAG_MAPPING = {
-    "fastbreak": "Fast Break",
-    "secondchancepoints": "Second Chance",
-    "pointsinthepaint": "Paint",
-    "leadchange": "Lead Change",
-    "tiedscore": "Tied Score",
-    "turnover": "Turnover",
-    "fromturnover": "From Turnover",
-    "2ndchance": "Second Chance",
-    "2freethrow": "2 Free Throws",
-    # Add more mappings as needed
-}
-
-def clean_tag(tag):
-    """Map a tag to its cleaned version or capitalize if not in mapping."""
-    return TAG_MAPPING.get(tag.lower(), tag.title())
 
 def process_message(value):
     """Process a single message from Kafka."""
@@ -43,6 +39,11 @@ def process_message(value):
     # Clean up the tags
     if 'qualifiers' in play and play['qualifiers']:
         play['qualifiers'] = [clean_tag(tag) for tag in play['qualifiers']]
+
+    # Ensure player, shotDistance, and pie fields are present
+    play['player'] = play.get('player', 'Unknown Player')
+    play['shotDistance'] = play.get('shotDistance', 'N/A')
+    play['pie'] = play.get('pie', 0)
 
     return play
 
@@ -61,16 +62,24 @@ def update_dataframe(plays):
     # Clean up tags in the DataFrame
     df['Tags'] = df['Tags'].apply(lambda tags: [clean_tag(tag) for tag in tags] if isinstance(tags, list) else [])
 
-    return df[['Period', 'Time Remaining', 'description', 'Tags', 'Home', 'Away']]
+    return df[['Period', 'Time Remaining', 'description', 'Tags', 'Home', 'Away', 'player', 'pie']]
 
 def display_data(df, placeholder):
     """Display the updated data in the Streamlit app."""
     with placeholder.container():
+        # Find the player with the highest PIE score for each team
+        home_team = df.iloc[0]['Home']
+        away_team = df.iloc[0]['Away']
+
+        home_player = df[df['Home'] == home_team].sort_values(by='pie', ascending=False).iloc[0]
+        away_player = df[df['Away'] == away_team].sort_values(by='pie', ascending=False).iloc[0]
+
+        st.subheader("Top Players by PIE Score")
         col1, col2 = st.columns(2)
         with col1:
-            st.metric("Home Team", df.iloc[0]['Home'])
+            st.metric(f"Home Team: {home_team}", f"{home_player['player']} (PIE: {home_player['pie']})")
         with col2:
-            st.metric("Away Team", df.iloc[0]['Away'])
+            st.metric(f"Away Team: {away_team}", f"{away_player['player']} (PIE: {away_player['pie']})")
 
         st.subheader("Latest Play")
         st.info(f"Period: {df.iloc[0]['Period']} | Time Remaining: {df.iloc[0]['Time Remaining']}")
