@@ -1,14 +1,24 @@
 from kafka import KafkaProducer
 from kafka import KafkaConsumer
 from nba_api.live.nba.endpoints import playbyplay
+from nba_api.stats.endpoints import scoreboardv2
 import json
 import time
+import pandas as pd
+from datetime import datetime
+from simple_term_menu import TerminalMenu
 
 # set up Kafka producer
+
 producer = KafkaProducer(
     bootstrap_servers='localhost:9092',
+
     value_serializer=lambda v:json.dumps(v).encode('utf-8')
 )
+
+
+
+
 # set up Kafka consumer
 consumer = KafkaConsumer(
     'nba_playbyplay',
@@ -54,7 +64,28 @@ def produce_nba_playbyplay_messages(game_id, topic):
         for play in plays:
             send_message(topic, play)
             print(f"Sent message: {play}")
-            time.sleep(3)
+            time.sleep(2)
 
         time.sleep(60)  # Wait for 60 seconds before fetching new plays
-produce_nba_playbyplay_messages(game_id=input("Enter game ID: "), topic='nba_playbyplay')
+
+if datetime.today() >= datetime.strptime("10-04-2024", '%m-%d-%Y'):
+    game_date = datetime.today().strftime('%m-%d-%Y')
+else:
+    game_date = "04-01-2024"
+
+game_ids = pd.read_parquet('Static Files/2024-25_game_ids.parquet')
+teams = pd.read_parquet('Static Files/team_details.parquet')
+headers = json.loads(scoreboardv2.ScoreboardV2(game_date=game_date).get_json())['resultSets'][0]['headers']
+df = pd.DataFrame(json.loads(scoreboardv2.ScoreboardV2(game_date=game_date).get_json())['resultSets'][0]['rowSet'], columns=headers)
+home_teams = teams.merge(df, left_on='TEAM_ID', right_on='HOME_TEAM_ID', how='inner')
+home_teams['home_team'] = home_teams['CITY'] + ' ' + home_teams['NICKNAME']
+home_teams = home_teams[['GAME_ID',  'home_team']]
+visitor_teams = teams.merge(df, left_on='TEAM_ID', right_on='VISITOR_TEAM_ID', how='inner')
+visitor_teams['away_team'] = visitor_teams['CITY'] + ' ' + visitor_teams['NICKNAME']
+visitor_teams = visitor_teams[['GAME_ID',  'away_team']]
+matchups = home_teams.merge(visitor_teams, how='left').fillna('External')
+terminal_menu = TerminalMenu(matchups.apply(lambda row: f"{row['home_team']} vs {row['away_team']} (Game ID: {row['GAME_ID']})", axis=1).tolist())
+print(f'Showing all games for {game_date}:\n')
+choice_index = terminal_menu.show()
+selected_game_id = matchups.iloc[choice_index]['GAME_ID']
+produce_nba_playbyplay_messages(game_id=selected_game_id, topic='nba_playbyplay')

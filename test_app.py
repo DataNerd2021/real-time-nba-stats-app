@@ -98,13 +98,12 @@ def display_data(df, placeholder):
 def main():
     """Main function to run the Streamlit app for displaying NBA play-by-play stream."""
     st.set_page_config(page_title="NBA Live Play-by-Play", page_icon="🏀", layout="wide")
-
     st.title('🏀 NBA Live Play-by-Play Stream')
     st.markdown("""
     This app shows real-time play-by-play data from NBA games.
     The data is streamed from a Kafka topic and updated live.
     """)
-
+    game_selection = st.selectbox("Select a game", ["Game 1", "Game 2", "Game 3", "Game 4", "Game 5"])
     # Initialize session state
     if 'show_all_data' not in st.session_state:
         st.session_state.show_all_data = False
