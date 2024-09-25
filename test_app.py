@@ -4,20 +4,16 @@ from confluent_kafka import Consumer, KafkaError
 import json
 from collections import deque
 import re
+from transformers import pipeline
 
-TAG_MAPPING = {
-    "fastbreak": "Fast Break",
-    "secondchancepoints": "Second Chance Points",
-    "pointsinthepaint": "Points in the Paint",
-    "leadchange": "Lead Change",
-    "tiedscore": "Tied Score",
-    "turnover": "Turnover",
-    # Add more mappings as needed
-}
+# Set page config at the very beginning
+st.set_page_config(page_title="NBA Live Play-by-Play", page_icon="🏀", layout="wide")
 
-def clean_tag(tag):
-    """Map a tag to its cleaned version or capitalize if not in mapping."""
-    return TAG_MAPPING.get(tag.lower(), tag.capitalize())
+@st.cache_resource
+def load_qa_pipeline():
+    return pipeline("question-answering", model="distilbert-base-cased-distilled-squad")
+
+qa_pipeline = load_qa_pipeline()
 
 def create_kafka_consumer():
     """Create and return a Kafka consumer instance."""
@@ -36,15 +32,6 @@ def process_message(value):
     # Remove updated statistics from the description
     play['description'] = re.sub(r'\([^)]*\)', '', play['description']).strip()
 
-    # Clean up the tags
-    if 'qualifiers' in play and play['qualifiers']:
-        play['qualifiers'] = [clean_tag(tag) for tag in play['qualifiers']]
-
-    # Ensure player, shotDistance, and pie fields are present
-    play['player'] = play.get('player', 'Unknown Player')
-    play['shotDistance'] = play.get('shotDistance', 'N/A')
-    play['pie'] = play.get('pie', 0)
-
     return play
 
 def update_dataframe(plays):
@@ -53,93 +40,81 @@ def update_dataframe(plays):
     df = df.drop(columns=['actionNumber'])
     df = df.rename(columns={
         'clock': 'Time Remaining',
-        'qualifiers': 'Tags',
         'scoreAway': 'Away',
         'scoreHome': 'Home',
         'period': 'Period'
     })
 
-    # Clean up tags in the DataFrame
-    df['Tags'] = df['Tags'].apply(lambda tags: [clean_tag(tag) for tag in tags] if isinstance(tags, list) else [])
+    return df[['Period', 'Time Remaining', 'description', 'Home', 'Away', 'home_team', 'away_team']]
 
-    return df[['Period', 'Time Remaining', 'description', 'Tags', 'Home', 'Away', 'player', 'pie']]
-
-def display_data(df, placeholder):
+def display_data(df):
     """Display the updated data in the Streamlit app."""
-    with placeholder.container():
-        # Find the player with the highest PIE score for each team
-        home_team = df.iloc[0]['Home']
-        away_team = df.iloc[0]['Away']
+    st.header("Scoreboard")
+    col1, col2, col3, col4 = st.columns(4)
 
-        home_player = df[df['Home'] == home_team].sort_values(by='pie', ascending=False).iloc[0]
-        away_player = df[df['Away'] == away_team].sort_values(by='pie', ascending=False).iloc[0]
+    home_score = int(df.iloc[0]['Home'])
+    away_score = int(df.iloc[0]['Away'])
 
-        st.subheader("Top Players by PIE Score")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric(f"Home Team: {home_team}", f"{home_player['player']} (PIE: {home_player['pie']})")
-        with col2:
-            st.metric(f"Away Team: {away_team}", f"{away_player['player']} (PIE: {away_player['pie']})")
+    with col2:
+        st.write(f"<h3 style='text-align: center;'>{df.iloc[0]['home_team']}</h3>\n<h2 style='text-align: center;'>{home_score}</h2>", unsafe_allow_html=True)
+    with col3:
+        st.write(f"<h3 style='text-align: center;'>{df.iloc[0]['away_team']}</h3>\n<h2 style='text-align: center;'>{away_score}</h2>", unsafe_allow_html=True)
 
-        st.subheader("Latest Play")
-        st.info(f"Period: {df.iloc[0]['Period']} | Time Remaining: {df.iloc[0]['Time Remaining']}")
-        st.write(df.iloc[0]['description'])
+    st.info(f"Period: {df.iloc[0]['Period']} | Time Remaining: {df.iloc[0]['Time Remaining']}")
+    st.subheader("Latest Play")
+    st.write(df.iloc[0]['description'])
 
-        if df.iloc[0]['Tags']:
-            st.write("Tags:", ", ".join(df.iloc[0]['Tags']))
+    st.subheader("Recent Plays")
+    st.dataframe(df[['Period', 'Time Remaining', 'description']], height=400)
 
-        st.subheader("Recent Plays")
-        st.dataframe(df[['Period', 'Time Remaining', 'description']], height=400)
+    if st.session_state.show_all_data:
+        st.subheader("Full Dataset")
+        st.dataframe(df)
 
-        if st.session_state.show_all_data:
-            st.subheader("Full Dataset")
-            st.dataframe(df)
 
 def main():
-    """Main function to run the Streamlit app for displaying NBA play-by-play stream."""
-    st.set_page_config(page_title="NBA Live Play-by-Play", page_icon="🏀", layout="wide")
     st.title('🏀 NBA Live Play-by-Play Stream')
     st.markdown("""
     This app shows real-time play-by-play data from NBA games.
     The data is streamed from a Kafka topic and updated live.
     """)
-    game_selection = st.selectbox("Select a game", ["Game 1", "Game 2", "Game 3", "Game 4", "Game 5"])
-    # Initialize session state
+
     if 'show_all_data' not in st.session_state:
         st.session_state.show_all_data = False
 
-    # Checkbox to control full dataset display
-    st.checkbox("Show all data", key="show_all_data", value=st.session_state.show_all_data, on_change=lambda: setattr(st.session_state, 'show_all_data', not st.session_state.show_all_data))
+    st.checkbox("Show all data", key="show_all_data")
 
     consumer = create_kafka_consumer()
     consumer.subscribe(['nba_playbyplay'])
 
-    placeholder = st.empty()
     plays = deque(maxlen=100)
 
-    try:
-        while True:
-            msg = consumer.poll(1.0)
+    placeholder = st.empty()
 
-            if msg is None:
+    while True:
+        msg = consumer.poll(1.0)
+
+        if msg is None:
+            continue
+        if msg.error():
+            if msg.error().code() == KafkaError._PARTITION_EOF:
                 continue
-            if msg.error():
-                if msg.error().code() == KafkaError._PARTITION_EOF:
-                    continue
-                st.error(f"Error: {msg.error()}")
-                break
+            st.error(f"Error: {msg.error()}")
+            break
 
-            try:
-                play = process_message(msg.value())
-                plays.appendleft(play)
+        try:
+            play = process_message(msg.value())
+            plays.appendleft(play)
 
-                df = update_dataframe(plays)
-                display_data(df, placeholder)
-            except json.JSONDecodeError:
-                st.warning(f"Error decoding JSON: {msg.value()}")
+            df = update_dataframe(plays)
 
-    finally:
-        consumer.close()
+            with placeholder.container():
+                display_data(df)
+
+        except json.JSONDecodeError:
+            st.warning(f"Error decoding JSON: {msg.value()}")
+
+    consumer.close()
 
 if __name__ == "__main__":
     main()
