@@ -4,16 +4,9 @@ from confluent_kafka import Consumer, KafkaError
 import json
 from collections import deque
 import re
-from transformers import pipeline
 
 # Set page config at the very beginning
 st.set_page_config(page_title="NBA Live Play-by-Play", page_icon="🏀", layout="wide")
-
-@st.cache_resource
-def load_qa_pipeline():
-    return pipeline("question-answering", model="distilbert-base-cased-distilled-squad")
-
-qa_pipeline = load_qa_pipeline()
 
 def create_kafka_consumer():
     """Create and return a Kafka consumer instance."""
