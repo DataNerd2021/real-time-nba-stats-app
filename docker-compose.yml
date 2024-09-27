@@ -9,6 +9,7 @@ services:
       - KAFKA_LISTENERS=PLAINTEXT://:29092
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_SECURITY_PROTOCOL=SSL
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
     ports:
