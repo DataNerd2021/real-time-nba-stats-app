@@ -1,5 +1,11 @@
 from confluent_kafka import Consumer, Producer
 
+conf = {
+    'bootstrap.servers': 'host.docker.internal:9092',
+    'group.id': 'streamlit-app',
+    'auto.offset.reset': 'earliest'
+}
+
 producer = Producer({'bootstrap.servers': 'localhost:9092'})
 
 def game_play_ingestion_message(err, msg:str):

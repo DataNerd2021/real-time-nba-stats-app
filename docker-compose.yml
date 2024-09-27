@@ -9,7 +9,6 @@ services:
       - KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:29092
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
-      - KAFKA_SECURITY_PROTOCOL=SSL
       - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
     extra_hosts:
       - "host.docker.internal:host-gateway"
