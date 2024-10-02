@@ -1,8 +1,10 @@
-from nba_api.live.nba.endpoints import scoreboard, playbyplay
+from nba_api.stats.endpoints import leaguegamefinder
+from nba_api.live.nba.endpoints import playbyplay
 from confluent_kafka import Producer
 import json
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
+import threading
 
 # Kafka configuration
 kafka_config = {
@@ -16,57 +18,53 @@ producer = Producer(kafka_config)
 # Kafka topic name
 topic = 'nba-plays'
 
-def get_games(date):
-    games = scoreboard.ScoreBoard(game_date=date).get_dict()['games']
-    return [(game['gameId'], f"{game['awayTeam']['teamName']} vs {game['homeTeam']['teamName']}") for game in games]
+def get_recent_games(num_games=10):
+    gamefinder = leaguegamefinder.LeagueGameFinder(league_id_nullable='00', season_nullable='2023-24', date_nullable=datetime.now().strftime('%Y-%m-%d'))
+    games = gamefinder.get_data_frames()[0]
+    recent_games = games.sort_values('GAME_DATE', ascending=False).head(num_games)
 
-def get_available_games():
-    today = datetime.now().strftime("%Y-%m-%d")
-    games = get_games(today)
-
-    if not games:
-        yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-        games = get_games(yesterday)
-
-    return games
-
-def select_game(games):
-    print("Available games:")
-    for i, (game_id, game_name) in enumerate(games, 1):
-        print(f"{i}. {game_name}")
-
-    while True:
-        try:
-            selection = int(input("Enter the number of the game you want to stream: ")) - 1
-            if 0 <= selection < len(games):
-                return games[selection][0]
-            else:
-                print("Invalid selection. Please try again.")
-        except ValueError:
-            print("Invalid input. Please enter a number.")
+    return [(row['GAME_ID'], f"{row['MATCHUP']} - {row['GAME_DATE']}") for _, row in recent_games.iterrows()]
 
 def delivery_report(err, msg):
     if err is not None:
         print(f'Message delivery failed: {err}')
     else:
-        print(f'Message delivered to {msg.topic()} [{msg.partition()}]')
+        print(f'Message delivered to {msg.topic()} [{msg.partition()}] with key {msg.key().decode("utf-8")}')
 
-def stream_game_plays(game_id):
+def stream_game_plays(game_id, game_info):
+    print(f"Starting to stream plays for game: {game_info}")
     pbp = playbyplay.PlayByPlay(game_id)
     plays = pbp.get_dict()['game']['actions']
 
-    for play in plays:
+    for i, play in enumerate(plays, 1):
         play_json = json.dumps(play)
-        producer.produce(topic, value=play_json, callback=delivery_report)
+        # Create a key combining game_id and play number
+        key = f"{game_id}_{i:05d}"  # Pad with zeros to ensure correct sorting
+        producer.produce(topic, key=key, value=play_json, callback=delivery_report)
         producer.flush()
-        time.sleep(0.1)
+        if i % 50 == 0:  # Print progress every 50 plays
+            print(f"Game {game_id}: Sent {i}/{len(plays)} plays")
+        time.sleep(0.05)  # Reduced sleep time for faster processing
 
-    print(f"Sent {len(plays)} plays to topic '{topic}'")
+    print(f"\nCompleted: Sent {len(plays)} plays for game {game_id} to topic '{topic}'")
+
+def stream_all_games(games):
+    threads = []
+    for game_id, game_info in games:
+        thread = threading.Thread(target=stream_game_plays, args=(game_id, game_info))
+        threads.append(thread)
+        thread.start()
+
+    # Wait for all threads to complete
+    for thread in threads:
+        thread.join()
 
 if __name__ == "__main__":
-    available_games = get_available_games()
-    if not available_games:
-        print("No games available. Please try again later.")
+    print("Fetching recent games...")
+    recent_games = get_recent_games()
+    if not recent_games:
+        print("No games available. This should not happen unless there's an issue with the NBA API.")
     else:
-        selected_game_id = select_game(available_games)
-        stream_game_plays(selected_game_id)
+        print(f"Found {len(recent_games)} recent games. Starting to stream all games...")
+        stream_all_games(recent_games)
+        print("All games have been streamed.")
