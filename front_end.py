@@ -16,7 +16,7 @@ consumer = Consumer(kafka_config)
 
 st.set_page_config(page_title="Real-Time NBA Stats App", page_icon=":basketball:")
 
-st.title(":basketball: Real-Time NBA Stats App")
+st.title(":basketball: Real-Time NBA Stats App (Beta)")
 
 st.write("This app allows you to search for NBA games and view real-time plays and stats for those games.")
 
