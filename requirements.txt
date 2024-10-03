@@ -3,6 +3,5 @@ pandas
 pandavro
 tqdm
 confluent-kafka
-flask
-transformers
 accelerate
+streamlit

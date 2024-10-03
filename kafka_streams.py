@@ -49,11 +49,11 @@ def get_last_regular_season_day():
             league_id_nullable='00'
         )
         games_df = gamefinder.get_data_frames()[0]
-        
+
         if not games_df.empty:
             last_day = pd.to_datetime(games_df['GAME_DATE']).max()
             return last_day
-        
+
         end_date = start_date - timedelta(days=1)
         start_date = end_date - timedelta(days=30)
 
@@ -82,8 +82,8 @@ def stream_game_plays(game_id, game_info):
             key = f"{game_id}_{play['actionNumber']:05d}"
             producer.produce(topic, key=key, value=play_json, callback=delivery_report)
             producer.flush()
-            
-            
+
+
             last_event_num = play['actionNumber']
             time.sleep(1)  # Add a small delay to simulate real-time ingestion
 
@@ -93,11 +93,11 @@ def stream_game_plays(game_id, game_info):
             print(f"No new plays for game {game_info}. Ending stream.")
             break
 
-        time.sleep(5)  # Poll for new plays every 5 seconds
+        time.sleep(3)  # Poll for new plays every 5 seconds
 
 def consume_messages():
     consumer.subscribe([topic])
-    
+
     try:
         while True:
             msg = consumer.poll(1.0)
@@ -108,8 +108,6 @@ def consume_messages():
                     print('Reached end of partition')
                 else:
                     print(f'Error while consuming message: {msg.error()}')
-            else:
-                print(f'Consumed message: Key = {msg.key().decode("utf-8")}')
     except KeyboardInterrupt:
         pass
     finally:
