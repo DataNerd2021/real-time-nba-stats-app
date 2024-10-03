@@ -24,9 +24,11 @@ st.write("This app allows you to search for NBA games and view real-time plays a
 today = date.today().strftime('%Y-%m-%d')
 games_data = scoreboardv2.ScoreboardV2(game_date=today).get_dict()
 if len(games_data['resultSets']) > 0:
-    games_data = scoreboardv2.ScoreboardV2(game_date='2024-10-04').get_dict()
+    games_data = scoreboardv2.ScoreboardV2(game_date=today).get_dict()
     games = games_data['resultSets'][0]['rowSet']
     games_info = games_data['resultSets'][1]['rowSet']
+else:
+    st.error("No games found for today.")
 
 st.write('')
 st.write('')
