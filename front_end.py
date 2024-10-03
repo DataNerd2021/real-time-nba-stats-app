@@ -27,10 +27,7 @@ if len(games_data['resultSets']) > 0:
     games_data = scoreboardv2.ScoreboardV2(game_date=today).get_dict()
     games = games_data['resultSets'][0]['rowSet']
     games_info = games_data['resultSets'][1]['rowSet']
-else:
-    st.error("No games found for today.")
-
-st.write('')
+    st.write('')
 st.write('')
 st.header("Select a Game:")
 
@@ -94,3 +91,6 @@ if 'selected_game_id' in st.session_state:
         finally:
             # Close the consumer
             consumer.close()
+else:
+    st.write("No games found for today.")
+
