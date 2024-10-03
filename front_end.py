@@ -49,7 +49,7 @@ if 'selected_game_id' in st.session_state:
     if st.button("View Game Plays"):
         try:
             # Subscribe to the topic
-            topic = f"nba-plays"
+            topic = "nba-plays"
             consumer.subscribe([topic])
 
             # Create an empty list to store the plays
