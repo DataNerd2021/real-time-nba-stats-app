@@ -3,7 +3,8 @@ import pandas as pd
 from confluent_kafka import Producer, Consumer, KafkaError
 from nba_api.stats.endpoints import scoreboardv2
 import json
-from datetime import date
+from datetime import datetime
+import pytz
 
 kafka_config = {
     'bootstrap.servers': 'localhost:9092',
@@ -21,7 +22,7 @@ st.title(":basketball: Real-Time NBA Stats App (Beta)")
 st.write("This app allows you to search for NBA games and view real-time plays and stats for those games.")
 
 # Fetch today's games
-today = date.today().strftime('%Y-%m-%d')
+today = datetime.now(pytz.timezone("US/Mountain")).strftime("%Y-%m-%d")
 games_data = json.loads(scoreboardv2.ScoreboardV2(game_date=today).get_json())
 if len(games_data['resultSets'][0]['rowSet']) == 0:
     st.write("<h2>No games found for today.<br>Try again tomorrow.</h2>", unsafe_allow_html=True)
