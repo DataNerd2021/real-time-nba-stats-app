@@ -22,9 +22,11 @@ st.write("This app allows you to search for NBA games and view real-time plays a
 
 # Fetch today's games
 today = date.today().strftime('%Y-%m-%d')
-games_data = scoreboardv2.ScoreboardV2(game_date=today).get_dict()
-if len(games_data['resultSets']) > 0:
-    games_data = scoreboardv2.ScoreboardV2(game_date=today).get_dict()
+games_data = json.loads(scoreboardv2.ScoreboardV2(game_date=today).get_json())
+if len(games_data['resultSets'][0]['rowSet']) == 0:
+    st.write("<h2>No games found for today.<br>Try again tomorrow.</h2>", unsafe_allow_html=True)
+else:
+    games_data = json.loads(scoreboardv2.ScoreboardV2(game_date=today).get_json())
     games = games_data['resultSets'][0]['rowSet']
     games_info = games_data['resultSets'][1]['rowSet']
     st.write('')
@@ -91,6 +93,4 @@ if len(games_data['resultSets']) > 0:
             finally:
                 # Close the consumer
                 consumer.close()
-else:
-    st.write("No games found for today.")
 
