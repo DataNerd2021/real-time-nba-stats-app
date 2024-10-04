@@ -34,30 +34,6 @@ def delivery_report(err, msg):
     else:
         print(f'Message delivered to {msg.topic()} [{msg.partition()}] with key {msg.key().decode("utf-8")}')
 
-def get_last_regular_season_day():
-    today = datetime.now()
-    current_year = today.year
-    # Assume the regular season typically ends in April
-    end_date = datetime(current_year, 4, 30)
-    start_date = end_date - timedelta(days=30)  # Look back 30 days
-
-    while start_date.year == current_year:
-        gamefinder = leaguegamefinder.LeagueGameFinder(
-            date_from_nullable=start_date.strftime('%m/%d/%Y'),
-            date_to_nullable=end_date.strftime('%m/%d/%Y'),
-            season_type_nullable='Regular Season',
-            league_id_nullable='00'
-        )
-        games_df = gamefinder.get_data_frames()[0]
-
-        if not games_df.empty:
-            last_day = pd.to_datetime(games_df['GAME_DATE']).max()
-            return last_day
-
-        end_date = start_date - timedelta(days=1)
-        start_date = end_date - timedelta(days=30)
-
-    return None
 
 def get_games_for_date(date):
     gamefinder = leaguegamefinder.LeagueGameFinder(
@@ -133,15 +109,14 @@ def stream_all_games(games):
 
 
 if __name__ == "__main__":
-    last_regular_season_day = get_last_regular_season_day()
-    if last_regular_season_day:
-        print(f"Last day of regular season: {last_regular_season_day.strftime('%Y-%m-%d')}")
-        games = get_games_for_date(last_regular_season_day)
+    today = datetime.today().strftime('%Y-%m-%d')
+    if today:
+        games = get_games_for_date(today)
         if games:
             print(f"Found {len(games)} games. Starting to stream all games...")
             stream_all_games(games)
             print("All games have been streamed.")
         else:
-            print("No games found for the last day of the regular season.")
+            print(f"No games found for {today}")
     else:
         print("Game Ended")
