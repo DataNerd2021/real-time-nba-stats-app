@@ -23,7 +23,6 @@ st.write("This app allows you to search for NBA games and view real-time plays a
 
 # Fetch today's games
 today = datetime.now(pytz.timezone("US/Mountain")).strftime("%Y-%m-%d")
-st.write(today)
 games_data = json.loads(scoreboardv2.ScoreboardV2(game_date=today).get_json())
 if len(games_data['resultSets'][0]['rowSet']) == 0:
     st.write("<h2>No games found for today.<br>Try again tomorrow.</h2>", unsafe_allow_html=True)
