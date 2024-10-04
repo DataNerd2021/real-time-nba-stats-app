@@ -38,9 +38,10 @@ else:
     with st.container():
         for i, game in enumerate(games):
             game_id = game[2]
+            game_time = game[4]
             home_team = games_info[i*2][4]
             away_team = games_info[i*2+1][4]
-            label = f"{away_team} @ {home_team}"
+            label = f"{away_team} @ {home_team} ({game_time})"
             if st.button(label=label, key=f"game_{game_id}", use_container_width=True):
                 st.session_state.selected_game_id = game_id
                 st.session_state.selected_game_label = label
