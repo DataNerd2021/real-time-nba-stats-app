@@ -32,6 +32,7 @@ else:
     games_info = games_data['resultSets'][1]['rowSet']
     st.write('')
     st.write('')
+    st.write(f'Games for {today}:')
     st.header("Select a Game:")
 
     # Create a container for game buttons
