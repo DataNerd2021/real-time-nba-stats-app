@@ -1,103 +1,63 @@
-from nba_api.stats.endpoints import leaguegamefinder
-from nba_api.live.nba.endpoints import playbyplay
-from confluent_kafka import Producer, Consumer, KafkaError
-import json
-import time
-from datetime import datetime, date
-import threading
+import streamlit as st
 import pandas as pd
+from confluent_kafka import Producer, Consumer, KafkaError
+from nba_api.stats.endpoints import scoreboardv2
+import json
+import threading
+import time
+from datetime import datetime, timedelta
+import pytz
 
 # Kafka configuration
-conf = {
-    'bootstrap.servers': 'localhost:9092',
-    'client.id': 'nba-play-producer'
+kafka_config = {
+    'bootstrap.servers': 'localhost:9092',  # Adjust this if needed
+    'group.id': 'streamlit_app',
+    'auto.offset.reset': 'latest'
 }
 
-producer = Producer(conf)
+# Initialize Kafka consumer
+consumer = Consumer(kafka_config)
 
-# Consumer configuration
-consumer_conf = {
-    'bootstrap.servers': 'localhost:9092',
-    'group.id': 'nba-play-consumer',
-    'auto.offset.reset': 'earliest'
-}
+# Function to get today's games in US/Mountain timezone
+def get_todays_games():
+    mountain_tz = pytz.timezone('America/Denver')
+    today = datetime.now(mountain_tz).strftime('%Y-%m-%d')
+    games_data = scoreboardv2.ScoreboardV2(game_date=today).get_dict()
+    games = games_data['resultSets'][0]['rowSet']
+    game_info = games_data['resultSets'][1]['rowSet']
 
-consumer = Consumer(consumer_conf)
+    current_time = datetime.now(mountain_tz).time()
 
-topic = 'nba-plays'
+    # Filter games that are currently occurring
+    ongoing_games = []
+    for game in games:
+        game_id = game[2]
+        home_team = game_info[games.index(game) * 2][4]
+        away_team = game_info[games.index(game) * 2 + 1][4]
+        game_start_time = game[0]  # Assuming this is the start time in UTC
 
+        # Convert game start time to Mountain Time
+        game_start_time_mountain = datetime.strptime(str(game_start_time), '%Y-%m-%dT%H:%M:%S').astimezone(mountain_tz).time()
 
+        # Check if the game is ongoing
+        if game_start_time_mountain <= current_time:
+            ongoing_games.append((game_id, home_team, away_team))
 
-def delivery_report(err, msg):
-    if err is not None:
-        print(f'Message delivery failed: {err}')
-    else:
-        print(f'Message delivered to {msg.topic()} [{msg.partition()}] with key {msg.key().decode("utf-8")}')
+    return ongoing_games
 
+# Function to stream plays for a single game
+def stream_game_plays(game_id):
+    print(f"Starting to stream plays for game: {game_id}")
+    # Here you would implement the logic to stream plays for the game
+    # For example, using a Kafka producer to send game plays to a topic
 
-def get_games_for_date():
-    try:
-        gamefinder = leaguegamefinder.LeagueGameFinder(
-            date_from_nullable= date.today().strftime('%Y-%m-%d'),
-            date_to_nullable= date.today().strftime('%Y-%m-%d'),
-            league_id_nullable='00'
-        )
-        
-        games_df = gamefinder.get_data_frames()[0]
-        return [(str(row['GAME_ID']), f"{row['TEAM_NAME']} vs {row['MATCHUP'].split()[-1]}") for _, row in games_df.iterrows()]
-    except:
-        print(f"No games found for {date.today().strftime('%Y-%m-%d')}")
-    
-
-def stream_game_plays(game_id, game_info):
-    print(f"Starting to stream plays for game: {game_info}")
-    pbp = playbyplay.PlayByPlay(game_id)
-    last_event_num = 0
-
-    while True:
-        plays = pbp.get_dict()['game']['actions']
-        new_plays = [play for play in plays if play['actionNumber'] > last_event_num]
-
-        for play in new_plays:
-            play_json = json.dumps(play)
-            key = f"{game_id}_{play['actionNumber']:05d}"
-            producer.produce(topic, key=key, value=play_json, callback=delivery_report)
-            producer.flush()
-
-
-            last_event_num = play['actionNumber']
-            time.sleep(1)  # Add a small delay to simulate real-time ingestion
-
-        if len(new_plays) > 0:
-            print(f"Game {game_info}: Sent {len(new_plays)} new plays. Total plays: {last_event_num}")
-        else:
-            print(f"No new plays for game {game_info}. Ending stream.")
-            break
-
-        time.sleep(3)  # Poll for new plays every 5 seconds
-
-def consume_messages():
-    consumer.subscribe([topic])
-
-    try:
-        while True:
-            msg = consumer.poll(1.0)
-            if msg is None:
-                continue
-            if msg.error():
-                if msg.error().code() == KafkaError._PARTITION_EOF:
-                    print('Reached end of partition')
-                else:
-                    print(f'Error while consuming message: {msg.error()}')
-    except KeyboardInterrupt:
-        pass
-    finally:
-        consumer.close()
-
-def stream_all_games(games):
+# Function to stream all games
+def stream_all_games(games: list):
     threads = []
-    for game_id, game_info in games:
-        thread = threading.Thread(target=stream_game_plays, args=(game_id, game_info))
+
+    for game in games:
+        game_id = game[0]  # Assuming game[0] contains the game_id
+        thread = threading.Thread(target=stream_game_plays, args=(game_id,))
         threads.append(thread)
         thread.start()
 
@@ -112,14 +72,34 @@ def stream_all_games(games):
     # Wait for the consumer thread to complete (it will run indefinitely until interrupted)
     consumer_thread.join()
 
+# Function to consume messages from Kafka
+def consume_messages():
+    consumer.subscribe(['nba-plays'])  # Adjust the topic name as needed
 
+    try:
+        while True:
+            msg = consumer.poll(1.0)
+            if msg is None:
+                continue
+            if msg.error():
+                if msg.error().code() == KafkaError._PARTITION_EOF:
+                    continue
+                else:
+                    print(f'Error while consuming message: {msg.error()}')
+                    break
+    except KeyboardInterrupt:
+        pass
+    finally:
+        consumer.close()
+
+# Streamlit app
 if __name__ == "__main__":
-    today = date.today().strftime('%Y-%m-%d')
-    if today:
-        games = get_games_for_date()
-        if games:
-            print(f"Found {len(games)} games. Starting to stream all games...")
-            stream_all_games(games)
-            print("All games have been streamed.")
+
+    # Get today's games
+    games = get_todays_games()
+
+    if games:
+        print(f"Found {len(games)} ongoing games. Starting to stream all games...")
+        stream_all_games(games)
     else:
-        print("Game Ended")
+        print("No ongoing games found for today.")
