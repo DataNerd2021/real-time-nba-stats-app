@@ -5,7 +5,7 @@ from nba_api.stats.endpoints import scoreboardv2
 import json
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 import pytz
 
 # Kafka configuration
@@ -17,6 +17,9 @@ kafka_config = {
 
 # Initialize Kafka consumer
 consumer = Consumer(kafka_config)
+
+# Initialize Kafka producer
+producer = Producer(kafka_config)
 
 # Function to get today's games in US/Mountain timezone
 def get_todays_games():
@@ -48,8 +51,19 @@ def get_todays_games():
 # Function to stream plays for a single game
 def stream_game_plays(game_id):
     print(f"Starting to stream plays for game: {game_id}")
-    # Here you would implement the logic to stream plays for the game
-    # For example, using a Kafka producer to send game plays to a topic
+
+    # Simulate streaming game plays (replace this with actual logic)
+    for i in range(10):  # Simulating 10 plays for demonstration
+        play_data = {
+            'game_id': game_id,
+            'play_number': i,
+            'description': f"Play {i} for game {game_id}"
+        }
+
+        # Produce the play data to Kafka
+        producer.produce('nba-plays', json.dumps(play_data).encode('utf-8'))
+        producer.flush()  # Ensure the message is sent immediately
+        time.sleep(1)  # Simulate time between plays
 
 # Function to stream all games
 def stream_all_games(games: list):
@@ -87,6 +101,10 @@ def consume_messages():
                 else:
                     print(f'Error while consuming message: {msg.error()}')
                     break
+            else:
+                # Process the message
+                play_data = json.loads(msg.value().decode('utf-8'))
+                print(f"Consumed message: {play_data}")
     except KeyboardInterrupt:
         pass
     finally:
