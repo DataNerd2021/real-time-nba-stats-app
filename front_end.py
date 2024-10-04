@@ -38,7 +38,7 @@ else:
     with st.container():
         for i, game in enumerate(games):
             game_id = game[2]
-            game_time = game[4]
+            game_time = game[4].upper()
             home_team = games_info[i*2][4]
             away_team = games_info[i*2+1][4]
             label = f"{away_team} @ {home_team} ({game_time})"
