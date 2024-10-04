@@ -3,7 +3,7 @@ from nba_api.live.nba.endpoints import playbyplay
 from confluent_kafka import Producer, Consumer, KafkaError
 import json
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, date
 import threading
 import pandas as pd
 
@@ -35,14 +35,19 @@ def delivery_report(err, msg):
         print(f'Message delivered to {msg.topic()} [{msg.partition()}] with key {msg.key().decode("utf-8")}')
 
 
-def get_games_for_date(date):
-    gamefinder = leaguegamefinder.LeagueGameFinder(
-        date_from_nullable=date.strftime('%m/%d/%Y'),
-        date_to_nullable=date.strftime('%m/%d/%Y'),
-        league_id_nullable='00'
-    )
-    games_df = gamefinder.get_data_frames()[0]
-    return [(str(row['GAME_ID']), f"{row['TEAM_NAME']} vs {row['MATCHUP'].split()[-1]}") for _, row in games_df.iterrows()]
+def get_games_for_date():
+    try:
+        gamefinder = leaguegamefinder.LeagueGameFinder(
+            date_from_nullable= date.today().strftime('%Y-%m-%d'),
+            date_to_nullable= date.today().strftime('%Y-%m-%d'),
+            league_id_nullable='00'
+        )
+        
+        games_df = gamefinder.get_data_frames()[0]
+        return [(str(row['GAME_ID']), f"{row['TEAM_NAME']} vs {row['MATCHUP'].split()[-1]}") for _, row in games_df.iterrows()]
+    except:
+        print(f"No games found for {date.today().strftime('%Y-%m-%d')}")
+    
 
 def stream_game_plays(game_id, game_info):
     print(f"Starting to stream plays for game: {game_info}")
@@ -109,14 +114,12 @@ def stream_all_games(games):
 
 
 if __name__ == "__main__":
-    today = datetime.today().strftime('%Y-%m-%d')
+    today = date.today().strftime('%Y-%m-%d')
     if today:
-        games = get_games_for_date(today)
+        games = get_games_for_date()
         if games:
             print(f"Found {len(games)} games. Starting to stream all games...")
             stream_all_games(games)
             print("All games have been streamed.")
-        else:
-            print(f"No games found for {today}")
     else:
         print("Game Ended")
