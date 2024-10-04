@@ -25,6 +25,7 @@ today = date.today().strftime('%Y-%m-%d')
 games_data = json.loads(scoreboardv2.ScoreboardV2(game_date=today).get_json())
 if len(games_data['resultSets'][0]['rowSet']) == 0:
     st.write("<h2>No games found for today.<br>Try again tomorrow.</h2>", unsafe_allow_html=True)
+    Consumer.close()
 else:
     games_data = json.loads(scoreboardv2.ScoreboardV2(game_date=today).get_json())
     games = games_data['resultSets'][0]['rowSet']
