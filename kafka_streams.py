@@ -1,6 +1,6 @@
-import streamlit as st
 import pandas as pd
 from confluent_kafka import Producer, Consumer, KafkaError
+from nba_api.live.nba.endpoints import playbyplay
 from nba_api.stats.endpoints import scoreboardv2
 import json
 import threading
@@ -40,7 +40,7 @@ def get_todays_games():
         game_start_time = game[0]  # Assuming this is the start time in UTC
 
         # Convert game start time to Mountain Time
-        game_start_time_mountain = datetime.strptime(str(game_start_time), '%Y-%m-%dT%H:%M:%S').astimezone(mountain_tz).time()
+        game_start_time_mountain = datetime.strptime(game_start_time, '%Y-%m-%dT%H:%M:%S').astimezone(mountain_tz).time()
 
         # Check if the game is ongoing
         if game_start_time_mountain <= current_time:
@@ -48,43 +48,42 @@ def get_todays_games():
 
     return ongoing_games
 
-# Function to stream plays for a single game
+# Function to stream plays for a single game using the live play-by-play endpoint
 def stream_game_plays(game_id):
-    print(f"Starting to stream plays for game: {game_id}")
+    print(f"Starting to stream plays for game: {game_id[0]}")
 
-    # Simulate streaming game plays (replace this with actual logic)
-    for i in range(10):  # Simulating 10 plays for demonstration
-        play_data = {
-            'game_id': game_id,
-            'play_number': i,
-            'description': f"Play {i} for game {game_id}"
-        }
+    # Create a PlayByPlay object
+    try:
+        plays = playbyplay.PlayByPlay(game_id=game_id[0]).get_dict()['game']['actions']
+        while True:
 
-        # Produce the play data to Kafka
-        producer.produce('nba-plays', json.dumps(play_data).encode('utf-8'))
-        producer.flush()  # Ensure the message is sent immediately
-        time.sleep(1)  # Simulate time between plays
+            # Process each action
+            for action in plays:
+
+                # Produce the play data to Kafka
+                producer.produce('nba-plays', json.dumps(action).encode('utf-8'))
+                producer.flush()  # Ensure the message is sent immediately
+
+                    # Sleep for a while before fetching the next set of plays
+                time.sleep(5)  # Adjust the sleep time as needed
+    except json.JSONDecodeError:
+        print(f'No plays for {game_id}')
+
+
 
 # Function to stream all games
 def stream_all_games(games: list):
     threads = []
 
     for game in games:
-        game_id = game[0]  # Assuming game[0] contains the game_id
-        thread = threading.Thread(target=stream_game_plays, args=(game_id,))
+        print(f'Streaming {game}')
+        thread = threading.Thread(target=stream_game_plays, args=(game,))
         threads.append(thread)
         thread.start()
-
-    # Start the consumer in a separate thread
-    consumer_thread = threading.Thread(target=consume_messages)
-    consumer_thread.start()
 
     # Wait for all game threads to complete
     for thread in threads:
         thread.join()
-
-    # Wait for the consumer thread to complete (it will run indefinitely until interrupted)
-    consumer_thread.join()
 
 # Function to consume messages from Kafka
 def consume_messages():
@@ -110,14 +109,21 @@ def consume_messages():
     finally:
         consumer.close()
 
-# Streamlit app
+# Main execution
 if __name__ == "__main__":
-
     # Get today's games
     games = get_todays_games()
 
     if games:
-        print(f"Found {len(games)} ongoing games. Starting to stream all games...")
+        print(f"Found {len(games)} ongoing games.")
+        # Start streaming game plays
         stream_all_games(games)
+
+        # Start consuming messages in a separate thread
+        consumer_thread = threading.Thread(target=consume_messages)
+        consumer_thread.start()
+
+        # Wait for the consumer thread to complete (it will run indefinitely until interrupted)
+        consumer_thread.join()
     else:
         print("No ongoing games found for today.")
