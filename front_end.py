@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from confluent_kafka import Producer, Consumer, KafkaError
+from confluent_kafka import Consumer, KafkaError
 from nba_api.stats.endpoints import scoreboardv2
 import json
 from datetime import datetime
@@ -21,13 +21,14 @@ st.title(":basketball: Real-Time NBA Stats App (Beta)")
 
 st.write("This app allows you to search for NBA games and view real-time plays and stats for those games.")
 
-# Fetch today's games
-today = datetime.now(pytz.timezone("US/Mountain")).strftime("%Y-%m-%d")
+# Fetch today's games in Mountain Time
+mountain_tz = pytz.timezone("US/Mountain")
+today = datetime.now(mountain_tz).strftime("%Y-%m-%d")
 games_data = json.loads(scoreboardv2.ScoreboardV2(game_date=today).get_json())
+
 if len(games_data['resultSets'][0]['rowSet']) == 0:
     st.write("<h2>No games found for today.<br>Try again tomorrow.</h2>", unsafe_allow_html=True)
 else:
-    games_data = json.loads(scoreboardv2.ScoreboardV2(game_date=today).get_json())
     games = games_data['resultSets'][0]['rowSet']
     games_info = games_data['resultSets'][1]['rowSet']
     st.write('')
@@ -38,20 +39,29 @@ else:
     with st.container():
         for i, game in enumerate(games):
             game_id = game[2]
-            game_time = game[4].upper()
+            game_time_str = game[4]
+            # Remove the 'ET' and parse the time
+            game_time = datetime.strptime(game_time_str.replace(' ET', ''), "%I:%M %p")
+            # Assume the time is in Eastern Time, create a timezone-aware datetime
+            eastern_tz = pytz.timezone("US/Eastern")
+            game_time = eastern_tz.localize(game_time)
+            # Convert to Mountain Time
+            game_time_mt = game_time.astimezone(mountain_tz)
+            game_time_str = game_time_mt.strftime("%I:%M %p MT")
             home_team = games_info[i*2][4]
             away_team = games_info[i*2+1][4]
-            label = f"{away_team} @ {home_team} ({game_time})"
+            label = f"{away_team} @ {home_team} ({game_time_str})"
             if st.button(label=label, key=f"game_{game_id}", use_container_width=True):
                 st.session_state.selected_game_id = game_id
                 st.session_state.selected_game_label = label
 
     # Display selected game and start ingestion
     if 'selected_game_id' in st.session_state:
+        st.write(f"Selected Game: {st.session_state.selected_game_label}")
 
         if st.button("View Game Plays"):
             try:
-                # Subscribe to the topic
+                # Subscribe to the topic for the selected game
                 topic = f"nba-plays"
                 consumer.subscribe([topic])
 
@@ -83,6 +93,8 @@ else:
 
                     # Create a DataFrame from the plays
                     df = pd.DataFrame(plays)
+                    df = df[df['teamTricode'].isin([away_team, home_team])]
+                    df['clock'] = df['clock'].str.replace('PT', '').replace('M', ':').replace('S', '')
 
                     # Update the DataFrame display
                     df_placeholder.dataframe(df)
@@ -95,4 +107,3 @@ else:
             finally:
                 # Close the consumer
                 consumer.close()
-
