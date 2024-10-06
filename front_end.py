@@ -76,7 +76,7 @@ else:
             away_team_id = game[7]
             home_team = get_team_name(home_team_id)
             away_team = get_team_name(away_team_id)
-            label = f"{away_team} vs. {home_team} ({game_time_str.strip()})"
+            label = f"{home_team} vs. {away_team} ({game_time_str.strip()})"
             if st.button(label=label, key=f"game_{game_id}", use_container_width=True):
                 st.session_state.selected_game_id = game_id
                 st.session_state.selected_game_label = label
@@ -85,8 +85,34 @@ else:
 
     # Display selected game and start ingestion
     if 'selected_game_id' in st.session_state:
-        st.write(f"Selected Game: {st.session_state.selected_game_label}")
         if st.button("View Game Plays"):
+            game_over = is_game_over(st.session_state.selected_game_id)
+            
+            if game_over:
+                st.write("This game has ended. Displaying all plays from the database.")
+            else:
+                st.write("This game is still in progress. Displaying current plays from the database.")
+            all_plays = get_all_plays_from_db(st.session_state.selected_game_id)
+            if all_plays:
+                df = pd.DataFrame(all_plays, columns=['game_id', 'action_number', 'clock', 'timeActual', 'period', 'periodType',
+                                                      'team_id', 'teamTricode', 'actionType', 'subType', 'descriptor',
+                                                      'qualifiers', 'personId', 'x', 'y', 'possession', 'scoreHome', 'scoreAway', 'description'])
+                df['clock'] = df['clock'].str.replace('PT', '').str.replace('M', ':').str.replace('S', '')
+                df = df[['period', 'teamTricode', 'clock', 'description', 'scoreHome', 'scoreAway']]
+                df.rename(columns={'teamTricode': 'team', 'clock': 'time remaining'}, inplace=True)
+                
+                if not df.empty:
+                    # Display final score
+                    final_play = df.iloc[0]
+                    st.header(f"Final Score: {st.session_state.home_team} {final_play['scoreHome']} - {st.session_state.away_team} {final_play['scoreAway']}")
+                    
+                    # Display all plays
+                    st.dataframe(df)
+                else:
+                    st.write("No plays found for this game.")
+            else:
+                st.write("No plays found for this game in the database.")
+        else:
             try:
                 # Subscribe to the topic
                 topic = f"nba-plays"
