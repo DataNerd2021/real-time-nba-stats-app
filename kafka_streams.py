@@ -1,9 +1,9 @@
 from nba_api.stats.endpoints import scoreboardv2
 from nba_api.live.nba.endpoints import playbyplay, boxscore
 from confluent_kafka import Producer, Consumer, KafkaError
-from nba_api.live.nba.endpoints import playbyplay
-from nba_api.stats.endpoints import scoreboardv2
 import json
+import time
+from datetime import datetime, date
 import threading
 import pytz
 import requests
@@ -169,15 +169,30 @@ def transfer_kafka_to_sqlite():
                 continue
             if msg.error():
                 if msg.error().code() == KafkaError._PARTITION_EOF:
-                    print('Reached end of partition')
+                    print(f"Reached end of partition for {msg.topic()} [{msg.partition()}]")
+                    break
                 else:
-                    print(f'Error while consuming message: {msg.error()}')
+                    print(f"Error: {msg.error()}")
+                    break
+
+            # Extract game_id from the message key
+            key = msg.key().decode('utf-8')
+            game_id = key.split('_')[0]
+
+            play = json.loads(msg.value().decode('utf-8'))
+            insert_play(cursor, game_id, play)
+            conn.commit()
+
+            print(f"Inserted play: Game ID {game_id}, Action Number {play.get('actionNumber')}")
+
     except KeyboardInterrupt:
         print("Transfer interrupted by user")
 
     finally:
         consumer.close()
-
+        conn.close()
+        print("Transfer completed")
+               
 def stream_all_games(games):
     threads = []
     for game_id, game_info in games:
@@ -185,25 +200,19 @@ def stream_all_games(games):
         threads.append(thread)
         thread.start()
 
-    # Start the consumer in a separate thread
-    consumer_thread = threading.Thread(target=consume_messages)
-    consumer_thread.start()
-
     # Wait for all game threads to complete
     for thread in threads:
         thread.join()
 
-    # Wait for the consumer thread to complete (it will run indefinitely until interrupted)
-    consumer_thread.join()
-
-
 if __name__ == "__main__":
-    today = date.today().strftime('%Y-%m-%d')
-    if today:
-        games = get_games_for_date()
-        if games:
-            print(f"Found {len(games)} games. Starting to stream all games...")
-            stream_all_games(games)
-            print("All games have been streamed.")
+    transfer_kafka_to_sqlite()
+    games = get_todays_games()
+    if games:
+        print(f"Found {len(games)} games for today. Starting to stream all games...")
+        stream_all_games(games)
+        print("All games have been streamed.")
     else:
-        print("Game Ended")
+        print("No games found for today.")
+
+    # Close the database connection
+    conn.close()
