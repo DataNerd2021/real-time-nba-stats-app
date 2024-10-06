@@ -1,129 +1,209 @@
-import pandas as pd
+from nba_api.stats.endpoints import scoreboardv2
+from nba_api.live.nba.endpoints import playbyplay, boxscore
 from confluent_kafka import Producer, Consumer, KafkaError
 from nba_api.live.nba.endpoints import playbyplay
 from nba_api.stats.endpoints import scoreboardv2
 import json
 import threading
-import time
-from datetime import datetime
 import pytz
+import requests
+import sqlite3
 
 # Kafka configuration
-kafka_config = {
-    'bootstrap.servers': 'localhost:9092',  # Adjust this if needed
-    'group.id': 'streamlit_app',
-    'auto.offset.reset': 'latest'
+conf = {
+    'bootstrap.servers': 'localhost:9092',
+    'client.id': 'nba-play-producer'
 }
 
-# Initialize Kafka consumer
-consumer = Consumer(kafka_config)
+kafka_config = {
+    'bootstrap.servers': 'localhost:9092',
+    'group.id': 'kafka_to_sqlite_transfer',
+    'auto.offset.reset': 'earliest'  # Start reading from the beginning of the topic
+}
 
-# Initialize Kafka producer
-producer = Producer(kafka_config)
+producer = Producer(conf)
 
-# Function to get today's games in US/Mountain timezone
+topic = 'nba-plays'
+
+# Database setup
+db_name = 'nba_plays.db'
+conn = sqlite3.connect(db_name)
+cursor = conn.cursor()
+
+# Create table if it doesn't exist
+def create_table_if_not_exists(cursor):
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS plays (
+        game_id TEXT,
+        action_number INTEGER,
+        clock TEXT,
+        timeActual TEXT,
+        period INTEGER,
+        periodType TEXT,
+        team_id INTEGER,
+        teamTricode TEXT,
+        actionType TEXT,
+        subType TEXT,
+        descriptor TEXT,
+        qualifiers TEXT,
+        personId INTEGER,
+        x REAL,
+        y REAL,
+        possession INTEGER,
+        scoreHome TEXT,
+        scoreAway TEXT,
+        description TEXT,
+        PRIMARY KEY (game_id, action_number)
+    )
+    ''')
+
+def delivery_report(err, msg):
+    if err is not None:
+        print(f'Message delivery failed: {err}')
+    else:
+        print(f'Message delivered to {msg.topic()} [{msg.partition()}] with key {msg.key().decode("utf-8")}')
+
 def get_todays_games():
-    mountain_tz = pytz.timezone('America/Denver')
-    today = datetime.now(mountain_tz).strftime('%Y-%m-%d')
-    games_data = scoreboardv2.ScoreboardV2(game_date=today).get_dict()
+    today = date.today().strftime('%Y-%m-%d')
+    print(today)
+    scoreboard = scoreboardv2.ScoreboardV2(game_date=today)
+    games_data = json.loads(scoreboard.get_json())
     games = games_data['resultSets'][0]['rowSet']
-    game_info = games_data['resultSets'][1]['rowSet']
+    return [(game[2], f"{game[6]} vs {game[7]}") for game in games]
 
-    current_time = datetime.now(mountain_tz).time()
-
-    # Filter games that are currently occurring
-    ongoing_games = []
-    for game in games:
-        game_id = game[2]
-        home_team = game_info[games.index(game) * 2][4]
-        away_team = game_info[games.index(game) * 2 + 1][4]
-        game_start_time = game[0]  # Assuming this is the start time in UTC
-
-        # Convert game start time to Mountain Time
-        game_start_time_mountain = datetime.strptime(game_start_time, '%Y-%m-%dT%H:%M:%S').astimezone(mountain_tz).time()
-
-        # Check if the game is ongoing
-        if game_start_time_mountain <= current_time:
-            ongoing_games.append((game_id, home_team, away_team))
-
-    return ongoing_games
-
-# Function to stream plays for a single game using the live play-by-play endpoint
-def stream_game_plays(game_id):
-    print(f"Starting to stream plays for game: {game_id[0]}")
-
-    # Create a PlayByPlay object
+def is_game_over(game_id):
     try:
-        plays = playbyplay.PlayByPlay(game_id=game_id[0]).get_dict()['game']['actions']
+        box = boxscore.BoxScore(game_id)
+        game_data = box.get_dict()
+        game_status = game_data['game']['gameStatus']
+        return game_status == 3  # 3 indicates the game has ended
+    except Exception as e:
+        print(f"Error checking game status for {game_id}: {str(e)}")
+        return False
+
+def insert_play(cursor, game_id, play):
+    cursor.execute('''
+    INSERT OR REPLACE INTO plays (
+        game_id, action_number, clock, timeActual, period, periodType,
+        team_id, teamTricode, actionType, subType, descriptor,
+        qualifiers, personId, x, y, possession, scoreHome, scoreAway, description
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (
+        game_id, play.get('actionNumber'), play.get('clock'),
+        play.get('timeActual'), play.get('period'), play.get('periodType'),
+        play.get('teamId'), play.get('teamTricode'), play.get('actionType'),
+        play.get('subType'), play.get('descriptor'),
+        json.dumps(play.get('qualifiers')), play.get('personId'),
+        play.get('x'), play.get('y'), play.get('possession'),
+        play.get('scoreHome'), play.get('scoreAway'), play.get('description')
+    ))
+
+def stream_game_plays(game_id, game_info):
+    print(f"Starting to stream plays for game: {game_info}")
+    last_event_num = 0
+    consecutive_empty_responses = 0
+    max_empty_responses = 10  # Adjust this value as needed
+
+    while True:
+        try:
+            if is_game_over(game_id):
+                print(f"Game {game_info} has ended. Stopping stream.")
+                break
+
+            pbp = playbyplay.PlayByPlay(game_id)
+            plays = pbp.get_dict().get('game', {}).get('actions', [])
+            
+            if not plays:
+                consecutive_empty_responses += 1
+                if consecutive_empty_responses >= max_empty_responses:
+                    print(f"No new plays for game {game_info} after {max_empty_responses} attempts. Stopping stream.")
+                    break
+                print(f"No plays available for game {game_info}. Waiting... (Attempt {consecutive_empty_responses})")
+                time.sleep(30)  # Wait longer if no plays are available
+                continue
+
+            consecutive_empty_responses = 0  # Reset the counter when we get plays
+            new_plays = [play for play in plays if play['actionNumber'] > last_event_num]
+
+            for play in new_plays:
+                play['gameId'] = game_id  # Add game_id to the play data
+                play_json = json.dumps(play)
+                key = f"{game_id}_{play['actionNumber']:05d}"
+                producer.produce(topic, key=key, value=play_json, callback=delivery_report)
+                producer.flush()
+                insert_play(play)  # Insert play into the database
+
+                last_event_num = max(last_event_num, play['actionNumber'])
+
+            if len(new_plays) > 0:
+                print(f"Game {game_info}: Sent {len(new_plays)} new plays. Last event number: {last_event_num}")
+            else:
+                print(f"No new plays for game {game_info}. Last event number: {last_event_num}")
+
+        except json.JSONDecodeError as e:
+            print(f"JSON Decode Error for game {game_info}: {str(e)}")
+            time.sleep(10)  # Wait before retrying
+        except requests.exceptions.RequestException as e:
+            print(f"Network error for game {game_info}: {str(e)}")
+            time.sleep(30)  # Wait longer before retrying after a network error
+        except Exception as e:
+            print(f"Error processing game {game_info}: {str(e)}")
+            time.sleep(10)  # Wait before retrying
+
+        time.sleep(10)  # Poll for new plays every 10 seconds
+
+def transfer_kafka_to_sqlite():
+    consumer = Consumer(kafka_config)
+    consumer.subscribe([topic])
+
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+
+    create_table_if_not_exists(cursor)
+
+    try:
         while True:
+            msg = consumer.poll(1.0)
 
-            # Process each action
-            for action in plays:
+            if msg is None:
+                continue
+            if msg.error():
+                if msg.error().code() == KafkaError._PARTITION_EOF:
+                    print('Reached end of partition')
+                else:
+                    print(f'Error while consuming message: {msg.error()}')
+    except KeyboardInterrupt:
+        print("Transfer interrupted by user")
 
-                # Produce the play data to Kafka
-                producer.produce('nba-plays', json.dumps(action).encode('utf-8'))
-                producer.flush()  # Ensure the message is sent immediately
+    finally:
+        consumer.close()
 
-                    # Sleep for a while before fetching the next set of plays
-                time.sleep(5)  # Adjust the sleep time as needed
-    except json.JSONDecodeError:
-        print(f'No plays for {game_id}')
-
-
-
-# Function to stream all games
-def stream_all_games(games: list):
+def stream_all_games(games):
     threads = []
-
-    for game in games:
-        print(f'Streaming {game}')
-        thread = threading.Thread(target=stream_game_plays, args=(game,))
+    for game_id, game_info in games:
+        thread = threading.Thread(target=stream_game_plays, args=(game_id, game_info))
         threads.append(thread)
         thread.start()
+
+    # Start the consumer in a separate thread
+    consumer_thread = threading.Thread(target=consume_messages)
+    consumer_thread.start()
 
     # Wait for all game threads to complete
     for thread in threads:
         thread.join()
 
-# Function to consume messages from Kafka
-def consume_messages():
-    consumer.subscribe(['nba-plays'])  # Adjust the topic name as needed
+    # Wait for the consumer thread to complete (it will run indefinitely until interrupted)
+    consumer_thread.join()
 
-    try:
-        while True:
-            msg = consumer.poll(1.0)
-            if msg is None:
-                continue
-            if msg.error():
-                if msg.error().code() == KafkaError._PARTITION_EOF:
-                    continue
-                else:
-                    print(f'Error while consuming message: {msg.error()}')
-                    break
-            else:
-                # Process the message
-                play_data = json.loads(msg.value().decode('utf-8'))
-                print(f"Consumed message: {play_data}")
-    except KeyboardInterrupt:
-        pass
-    finally:
-        consumer.close()
 
-# Main execution
 if __name__ == "__main__":
-    # Get today's games
-    games = get_todays_games()
-
-    if games:
-        print(f"Found {len(games)} ongoing games.")
-        # Start streaming game plays
-        stream_all_games(games)
-
-        # Start consuming messages in a separate thread
-        consumer_thread = threading.Thread(target=consume_messages)
-        consumer_thread.start()
-
-        # Wait for the consumer thread to complete (it will run indefinitely until interrupted)
-        consumer_thread.join()
+    today = date.today().strftime('%Y-%m-%d')
+    if today:
+        games = get_games_for_date()
+        if games:
+            print(f"Found {len(games)} games. Starting to stream all games...")
+            stream_all_games(games)
+            print("All games have been streamed.")
     else:
-        print("No ongoing games found for today.")
+        print("Game Ended")

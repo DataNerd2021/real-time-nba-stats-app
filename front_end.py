@@ -1,12 +1,14 @@
 import streamlit as st
 import pandas as pd
-from confluent_kafka import Producer, Consumer, KafkaError
-from nba_api.stats.endpoints import scoreboardv2
+from confluent_kafka import Consumer, KafkaError
+from nba_api.stats.endpoints import scoreboardv2, teamdetails
+from nba_api.live.nba.endpoints import boxscore
 import json
 import threading
 import time
 from datetime import datetime
 import pytz
+import sqlite3
 
 # Kafka configuration
 kafka_config = {
@@ -15,144 +17,125 @@ kafka_config = {
     'auto.offset.reset': 'latest'
 }
 
+# Database connection
+db_name = 'nba_plays.db'
+conn = sqlite3.connect(db_name)
+cursor = conn.cursor()
+
 # Initialize Kafka consumer
 consumer = Consumer(kafka_config)
 
-# Initialize Kafka producer
-producer = Producer(kafka_config)
+st.set_page_config(page_title="Real-Time NBA Stats App", page_icon=":basketball:")
 
-# Function to get today's games in US/Mountain timezone
-def get_todays_games():
-    mountain_tz = pytz.timezone('America/Denver')
-    today = datetime.now(mountain_tz).strftime('%Y-%m-%d')
-    games_data = scoreboardv2.ScoreboardV2(game_date=today).get_dict()
-    games = games_data['resultSets'][0]['rowSet']
-    game_info = games_data['resultSets'][1]['rowSet']
+st.title(":basketball: Real-Time NBA Stats App (Beta)")
 
-    current_time = datetime.now(mountain_tz).time()
+st.write("This app allows you to search for NBA games and view real-time plays and stats for those games.")
 
-    # Filter games that are currently occurring
-    ongoing_games = []
-    for game in games:
-        game_id = game[2]
-        home_team = game_info[games.index(game) * 2][4]
-        away_team = game_info[games.index(game) * 2 + 1][4]
-        game_start_time = game[3]  # Assuming this is the start time in UTC
-
-        # Convert game start time to Mountain Time
-        game_start_time_mountain = datetime.strptime(game_start_time, '%Y-%m-%dT%H:%M:%S').astimezone(mountain_tz).time()
-
-        # Check if the game is ongoing
-        if game_start_time_mountain <= current_time:
-            ongoing_games.append((game_id, home_team, away_team))
-
-    return ongoing_games
-
-# Function to stream plays for a single game
-def stream_game_plays(game_id):
-    print(f"Starting to stream plays for game: {game_id}")
-
-    # Simulate streaming game plays (replace this with actual logic)
-    for i in range(10):  # Simulating 10 plays for demonstration
-        play_data = {
-            'game_id': game_id,
-            'play_number': i,
-            'description': f"Play {i} for game {game_id}"
-        }
-
-        # Produce the play data to Kafka
-        producer.produce('nba-plays', json.dumps(play_data).encode('utf-8'))
-        producer.flush()  # Ensure the message is sent immediately
-        time.sleep(1)  # Simulate time between plays
-
-# Function to stream all games
-def stream_all_games(games: list):
-    threads = []
-
-    for game in games:
-        game_id = game[0]  # Assuming game[0] contains the game_id
-        thread = threading.Thread(target=stream_game_plays, args=(game_id,))
-        threads.append(thread)
-        thread.start()
-
-    # Start the consumer in a separate thread
-    consumer_thread = threading.Thread(target=consume_messages)
-    consumer_thread.start()
-
-    # Wait for all game threads to complete
-    for thread in threads:
-        thread.join()
-
-    # Wait for the consumer thread to complete (it will run indefinitely until interrupted)
-    consumer_thread.join()
-
-# Function to consume messages from Kafka
-def consume_messages():
-    consumer.subscribe(['nba-plays'])  # Adjust the topic name as needed
-
+def is_game_over(game_id):
     try:
-        while True:
-            msg = consumer.poll(1.0)
-            if msg is None:
-                continue
-            if msg.error():
-                if msg.error().code() == KafkaError._PARTITION_EOF:
-                    continue
-                else:
-                    print(f'Error while consuming message: {msg.error()}')
-                    break
-            else:
-                # Process the message
-                play_data = json.loads(msg.value().decode('utf-8'))
-                print(f"Consumed message: {play_data}")
-    except KeyboardInterrupt:
-        pass
-    finally:
-        consumer.close()
+        box = boxscore.BoxScore(game_id)
+        game_data = box.get_dict()
+        game_status = game_data['game']['gameStatus']
+        return game_status == 3  # 3 indicates the game has ended
+    except Exception as e:
+        print(f"Error checking game status for {game_id}: {str(e)}")
+        return False
 
-# Streamlit app
-if __name__ == "__main__":
-    st.title("Real-Time NBA Game Plays")
+def get_all_plays_from_db(game_id):
+    cursor.execute('''
+    SELECT * FROM plays
+    WHERE game_id = ?
+    ORDER BY action_number DESC
+    ''', (game_id,))
+    return cursor.fetchall()
 
-    # Get today's games
-    games = get_todays_games()
+def get_team_name(team_id):
+    team_details = teamdetails.TeamDetails(team_id=team_id)
+    team_data = json.loads(team_details.get_json())
+    return team_data['resultSets'][0]['rowSet'][0][1]
 
-    if games:
-        st.write(f"Found {len(games)} ongoing games.")
+# Fetch today's games in Mountain Time
+mountain_tz = pytz.timezone("US/Mountain")
+today = datetime.now(mountain_tz).strftime("%Y-%m-%d")
+games_data = json.loads(scoreboardv2.ScoreboardV2(game_date=today).get_json())
 
-        # Button to start streaming game plays
-        if st.button("Start Streaming Game Plays"):
-            stream_all_games(games)
+if len(games_data['resultSets'][0]['rowSet']) == 0:
+    st.write("<h2>No games found for today.<br>Try again tomorrow.</h2>", unsafe_allow_html=True)
+else:
+    games = games_data['resultSets'][0]['rowSet']
+    st.write('')
+    st.write('')
+    st.header("Select a Game:")
 
-        # Button to view game plays
+    # Create a container for game buttons
+    with st.container():
+        for game in games:
+            game_id = game[2]
+            game_time_str = game[4]
+            home_team_id = game[6]
+            away_team_id = game[7]
+            home_team = get_team_name(home_team_id)
+            away_team = get_team_name(away_team_id)
+            label = f"{away_team} vs. {home_team} ({game_time_str.strip()})"
+            if st.button(label=label, key=f"game_{game_id}", use_container_width=True):
+                st.session_state.selected_game_id = game_id
+                st.session_state.selected_game_label = label
+                st.session_state.home_team = home_team
+                st.session_state.away_team = away_team
+
+    # Display selected game and start ingestion
+    if 'selected_game_id' in st.session_state:
+        st.write(f"Selected Game: {st.session_state.selected_game_label}")
         if st.button("View Game Plays"):
-            # Create a placeholder for the DataFrame
-            df_placeholder = st.empty()
-            plays = []
+            try:
+                # Subscribe to the topic
+                topic = f"nba-plays"
+                consumer.subscribe([topic])
 
-            # Continuously poll for messages and update the DataFrame
-            while True:
-                msg = consumer.poll(1.0)
-                if msg is None:
-                    continue
-                if msg.error():
-                    if msg.error().code() == KafkaError._PARTITION_EOF:
+                # Create an empty list to store the plays
+                plays = []
+
+                # Create a placeholder for the DataFrame
+                df_placeholder = st.empty()
+
+                # Display the results
+                st.write("Latest Game Plays:")
+
+                # Poll for messages
+                while True:
+                    msg = consumer.poll(1.0)
+
+                    if msg is None:
                         continue
-                    else:
-                        st.error(f"Error while consuming message: {msg.error()}")
-                        break
-                else:
+                    if msg.error():
+                        if msg.error().code() == KafkaError._PARTITION_EOF:
+                            continue
+                        else:
+                            st.error(f"Error: {msg.error()}")
+                            break
+
                     # Process the message
-                    play_data = json.loads(msg.value().decode('utf-8'))
-                    plays.append(play_data)
+                    play = json.loads(msg.value().decode('utf-8'))
+                    plays.append(play)
 
                     # Create a DataFrame from the plays
                     df = pd.DataFrame(plays)
+                    df = df[df['teamTricode'].isin([st.session_state.away_team, st.session_state.home_team])]
+                    df['clock'] = df['clock'].str.replace('PT', '').str.replace('M', ':').str.replace('S', '')
+                    df = df.sort_values(by='actionNumber', ascending=False)
+                    df = df[['period', 'teamTricode', 'clock', 'description']]
+                    df.rename(columns={'teamTricode': 'team', 'clock': 'time remaining'}, inplace=True)
+                    df = df.drop_duplicates()
 
                     # Update the DataFrame display
                     df_placeholder.dataframe(df)
 
-                # Add a small sleep to avoid overwhelming the UI
-                time.sleep(1)
-    else:
-        st.write("No ongoing games found for today.")
+                    # Keep only the last 10 plays
+                    if len(plays) > 10:
+                        plays.pop(0)
+            except Exception as e:
+                st.error(f"An error occurred while fetching game plays: {str(e)}")
+            finally:
+                # Close the consumer
+                consumer.close()
+
