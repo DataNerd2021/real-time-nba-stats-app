@@ -171,8 +171,6 @@ else:
                 else:
                     st.write("No plays found for this game in the database.")
 
-            update_display()  # Initial display
-
             # Polling loop
             while not game_over:
                 if is_halftime(st.session_state.selected_game_id):
@@ -186,7 +184,6 @@ else:
                     else:
                         refresh_placeholder.markdown(f"🔄 Next refresh in **{i}** seconds")
                     time.sleep(1)
-                
                 update_display()  # Update the display
                 game_over = is_game_over(st.session_state.selected_game_id)
 
