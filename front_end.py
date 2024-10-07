@@ -9,6 +9,7 @@ import time
 from datetime import datetime
 import pytz
 import sqlite3
+from requests import ReadTimeout, ConnectionError
 
 # Kafka configuration
 kafka_config = {
@@ -50,10 +51,23 @@ def get_all_plays_from_db(game_id):
     plays = cursor.fetchall()
     return plays
 
-def get_team_name(team_id):
-    team_details = teamdetails.TeamDetails(team_id=team_id)
-    team_data = json.loads(team_details.get_json())
-    return team_data['resultSets'][0]['rowSet'][0][1]
+@st.cache_data(ttl=3600)
+def get_team_name(team_id, max_retries=3, delay=2):
+    for attempt in range(max_retries):
+        try:
+            team_details = teamdetails.TeamDetails(team_id=team_id)
+            team_data = json.loads(team_details.get_json())
+            return team_data['resultSets'][0]['rowSet'][0][1]
+        except (ReadTimeout, ConnectionError) as e:
+            if attempt < max_retries - 1:
+                st.warning(f"Attempt {attempt + 1} failed. Retrying in {delay} seconds...")
+                time.sleep(delay)
+            else:
+                st.error(f"Failed to fetch team name after {max_retries} attempts. Please try again later.")
+                return f"Team ID {team_id}"
+        except Exception as e:
+            st.error(f"An unexpected error occurred: {str(e)}")
+            return f"Team ID {team_id}"
 
 # Fetch today's games in Mountain Time
 mountain_tz = pytz.timezone("US/Mountain")
