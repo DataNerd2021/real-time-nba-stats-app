@@ -116,75 +116,138 @@ else:
     if 'selected_game_id' in st.session_state:
         if st.button("View Game Plays"):
             game_over = is_game_over(st.session_state.selected_game_id)
-            
+
             # Create placeholders for the score, DataFrame, and refresh timer
             score_placeholder = st.empty()
             df_placeholder = st.empty()
             refresh_placeholder = st.empty()
 
             def update_display():
-                all_plays = get_all_plays_from_db(st.session_state.selected_game_id)
-                if all_plays:
-                    columns = [
-                        'game_id', 'action_number', 'clock', 'timeActual', 'period', 'periodType',
-                        'team_id', 'teamTricode', 'actionType', 'subType', 'descriptor',
-                        'qualifiers', 'personId', 'x', 'y', 'possession', 'scoreHome', 'scoreAway', 'description'
-                    ]
-                    df = pd.DataFrame(all_plays, columns=columns)
-                    
-                    # Convert 'qualifiers' from JSON string to list
-                    df['qualifiers'] = df['qualifiers'].apply(lambda x: json.loads(x) if x else None)
-                    
-                    # Clean up 'clock' field
-                    df['clock'] = df['clock'].apply(lambda x: x.replace('PT', '').replace('M', ':').replace('S', '') if isinstance(x, str) else x)
-                    
-                    # Add 'Court Coordinates' column
-                    df['Court Coordinates'] = df.apply(lambda row: f"({row['x']}, {row['y']})" if pd.notnull(row['x']) and pd.notnull(row['y']) else None, axis=1)
-                    
-                    # Rename columns
-                    df = df.rename(columns={
-                        'period': 'Period',
-                        'clock': 'Time Remaining',
-                        'teamTricode': 'Team',
-                        'description': 'Play Description',
-                        'actionType': 'Action Type',
-                        'subType': 'Action Subtype',
-                        'descriptor': 'Descriptor',
-                        'qualifiers': 'Tags'
-                    })
-                    
-                    # Reorder columns
-                    columns_order = [
-                        'Period', 'Time Remaining', 'Team', 'Play Description', 'Action Type', 'Action Subtype',
-                        'Descriptor', 'Tags', 'Court Coordinates', 'scoreHome', 'scoreAway'
-                    ]
-                    df = df[columns_order]
-                    
-                    if not df.empty:
-                        latest_play = df.iloc[0]
-                        score_placeholder.header(f"Current Score: {st.session_state.home_team} {latest_play['scoreHome']} - {st.session_state.away_team} {latest_play['scoreAway']}")
-                        
-                        # Display selected columns
-                        df_placeholder.dataframe(df, hide_index=True)
-                    else:
-                        st.write("No plays found for this game.")
-                else:
-                    st.write("No plays found for this game in the database.")
+                if game_over:
+                    all_plays = get_all_plays_from_db(st.session_state.selected_game_id)
+                    if all_plays:
+                        columns = [
+                            'game_id', 'action_number', 'clock', 'timeActual', 'period', 'periodType',
+                            'team_id', 'teamTricode', 'actionType', 'subType', 'descriptor',
+                            'qualifiers', 'personId', 'x', 'y', 'possession', 'scoreHome', 'scoreAway', 'description'
+                        ]
+                        df = pd.DataFrame(all_plays, columns=columns)
 
-            # Polling loop
-            while not game_over:
+                        # Convert 'qualifiers' from JSON string to list
+                        df['qualifiers'] = df['qualifiers'].apply(lambda x: json.loads(x) if x else None)
+
+                        # Clean up 'clock' field
+                        df['clock'] = df['clock'].apply(lambda x: x.replace('PT', '').replace('M', ':').replace('S', '') if isinstance(x, str) else x)
+
+                        # Add 'Court Coordinates' column
+                        df['Court Coordinates'] = df.apply(lambda row: f"({row['x']}, {row['y']})" if pd.notnull(row['x']) and pd.notnull(row['y']) else None, axis=1)
+
+                        # Rename columns
+                        df = df.rename(columns={
+                            'period': 'Period',
+                            'clock': 'Time Remaining',
+                            'teamTricode': 'Team',
+                            'description': 'Play Description',
+                            'actionType': 'Action Type',
+                            'subType': 'Action Subtype',
+                            'descriptor': 'Descriptor',
+                            'qualifiers': 'Tags'
+                        })
+
+                        # Reorder columns
+                        columns_order = [
+                            'Period', 'Time Remaining', 'Team', 'Play Description', 'Action Type', 'Action Subtype',
+                            'Descriptor', 'Tags', 'Court Coordinates', 'scoreHome', 'scoreAway'
+                        ]
+                        df = df[columns_order]
+
+                        if not df.empty:
+                            latest_play = df.iloc[0]
+                            score_placeholder.header(f"Current Score: {st.session_state.home_team} {latest_play['scoreHome']} - {st.session_state.away_team} {latest_play['scoreAway']}")
+
+                            # Display selected columns
+                            df_placeholder.dataframe(df, hide_index=True)
+                        else:
+                            st.write("No plays found for this game.")
+                    else:
+                        st.write("No plays found for this game in the database.")
+                else:
+                    consumer.subscribe(['nba-plays'])  # Subscribe to the nba-plays topic
+                    plays = []
+                    start_time = time.time()
+
+                    while time.time() - start_time < 5:  # Poll for 5 seconds
+                        msg = consumer.poll(0.1)
+                        if msg is None:
+                            continue
+                        if msg.error():
+                            if msg.error().code() == KafkaError._PARTITION_EOF:
+                                continue
+                            else:
+                                st.error(f"Error: {msg.error()}")
+                                break
+
+                        play_data = json.loads(msg.value().decode('utf-8'))
+                        if play_data['game_id'] == st.session_state.selected_game_id:
+                            plays.append(play_data)
+
+                    if plays:
+                        df = pd.DataFrame(plays)
+
+                        # Clean up 'clock' field if it exists
+                        if 'clock' in df.columns:
+                            df['clock'] = df['clock'].apply(lambda x: x.replace('PT', '').replace('M', ':').replace('S', '') if isinstance(x, str) else x)
+
+                        # Add 'Court Coordinates' column if 'x' and 'y' exist
+                        if 'x' in df.columns and 'y' in df.columns:
+                            df['Court Coordinates'] = df.apply(lambda row: f"({row['x']}, {row['y']})" if pd.notnull(row['x']) and pd.notnull(row['y']) else None, axis=1)
+
+                        # Rename columns
+                        column_mapping = {
+                            'period': 'Period',
+                            'clock': 'Time Remaining',
+                            'teamTricode': 'Team',
+                            'description': 'Play Description',
+                            'actionType': 'Action Type',
+                            'subType': 'Action Subtype',
+                            'descriptor': 'Descriptor',
+                            'qualifiers': 'Tags'
+                        }
+                        df = df.rename(columns={k: v for k, v in column_mapping.items() if k in df.columns})
+
+                        # Reorder columns
+                        columns_order = [
+                            'Period', 'Time Remaining', 'Team', 'Play Description', 'Action Type', 'Action Subtype',
+                            'Descriptor', 'Tags', 'Court Coordinates', 'scoreHome', 'scoreAway'
+                        ]
+                        df = df[[col for col in columns_order if col in df.columns]]
+
+                        if not df.empty:
+                            latest_play = df.iloc[0]
+                            if 'scoreHome' in latest_play and 'scoreAway' in latest_play:
+                                score_placeholder.header(f"Current Score: {st.session_state.home_team} {latest_play['scoreHome']} - {st.session_state.away_team} {latest_play['scoreAway']}")
+
+                            # Display selected columns
+                            df_placeholder.dataframe(df, hide_index=True)
+                        else:
+                            df_placeholder.write("No new plays in the last 5 seconds.")
+                    else:
+                        df_placeholder.write("No new plays in the last 5 seconds.")
+
+        # Polling loop
+        while not game_over:
+            if is_halftime(st.session_state.selected_game_id):
+                refresh_interval = 60  # 1 minute during halftime
+            else:
+                refresh_interval = 5  # 5 seconds during regular play
+
+            for i in range(refresh_interval, 0, -1):
                 if is_halftime(st.session_state.selected_game_id):
-                    refresh_interval = 60  # 1 minute during halftime
+                    refresh_placeholder.markdown(f"🏀 Halftime - Next refresh in **{i}** seconds")
                 else:
-                    refresh_interval = 5  # 5 seconds during regular play
+                    refresh_placeholder.markdown(f"🔄 Next refresh in **{i}** seconds")
+                time.sleep(1)
+            update_display()  # Update the display
+            game_over = is_game_over(st.session_state.selected_game_id)
 
-                for i in range(refresh_interval, 0, -1):
-                    if is_halftime(st.session_state.selected_game_id):
-                        refresh_placeholder.markdown(f"🏀 Halftime - Next refresh in **{i}** seconds")
-                    else:
-                        refresh_placeholder.markdown(f"🔄 Next refresh in **{i}** seconds")
-                    time.sleep(1)
-                update_display()  # Update the display
-                game_over = is_game_over(st.session_state.selected_game_id)
-
-            st.write("Game has ended. Final plays displayed above.")
+        st.write("Game has ended. Final plays displayed above.")
