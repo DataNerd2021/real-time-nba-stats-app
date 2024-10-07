@@ -4,14 +4,18 @@ from confluent_kafka import Consumer, KafkaError
 from nba_api.stats.endpoints import scoreboardv2, teamdetails
 from nba_api.live.nba.endpoints import boxscore
 import json
+import threading
+import time
 from datetime import datetime
 import pytz
 import sqlite3
+from requests import ReadTimeout, ConnectionError
 
+# Kafka configuration
 kafka_config = {
-    'bootstrap.servers': 'localhost:9092',
+    'bootstrap.servers': 'localhost:9092',  # Adjust this if needed
     'group.id': 'streamlit_app',
-    'auto.offset.reset': 'earliest'
+    'auto.offset.reset': 'latest'
 }
 
 # Database connection
@@ -37,19 +41,46 @@ def is_game_over(game_id):
     except Exception as e:
         print(f"Error checking game status for {game_id}: {str(e)}")
         return False
+def is_halftime(game_id):
+    try:
+        box = boxscore.BoxScore(game_id)
+        game_data = box.get_dict()
+        period = game_data['game']['period']
+        clock_running = game_data['game']['gameStatusText']
+        return period == 2 and clock_running == 'Halftime'
+    except Exception as e:
+        print(f"Error checking halftime status for {game_id}: {str(e)}")
+        return False
 
 def get_all_plays_from_db(game_id):
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
     cursor.execute('''
     SELECT * FROM plays
     WHERE game_id = ?
     ORDER BY action_number DESC
     ''', (game_id,))
-    return cursor.fetchall()
+    plays = cursor.fetchall()
+    conn.close()
+    return plays
 
-def get_team_name(team_id):
-    team_details = teamdetails.TeamDetails(team_id=team_id)
-    team_data = json.loads(team_details.get_json())
-    return team_data['resultSets'][0]['rowSet'][0][1]
+@st.cache_data(ttl=3600)
+def get_team_name(team_id, max_retries=3, delay=2):
+    for attempt in range(max_retries):
+        try:
+            team_details = teamdetails.TeamDetails(team_id=team_id)
+            team_data = json.loads(team_details.get_json())
+            return team_data['resultSets'][0]['rowSet'][0][1]
+        except (ReadTimeout, ConnectionError) as e:
+            if attempt < max_retries - 1:
+                st.warning(f"Attempt {attempt + 1} failed. Retrying in {delay} seconds...")
+                time.sleep(delay)
+            else:
+                st.error(f"Failed to fetch team name after {max_retries} attempts. Please try again later.")
+                return f"Team ID {team_id}"
+        except Exception as e:
+            st.error(f"An unexpected error occurred: {str(e)}")
+            return f"Team ID {team_id}"
 
 # Fetch today's games in Mountain Time
 mountain_tz = pytz.timezone("US/Mountain")
@@ -80,87 +111,143 @@ else:
                 st.session_state.home_team = home_team
                 st.session_state.away_team = away_team
 
-    # Display selected game and start ingestion
+
+
     if 'selected_game_id' in st.session_state:
         if st.button("View Game Plays"):
             game_over = is_game_over(st.session_state.selected_game_id)
-            
-            if game_over:
-                st.write("This game has ended. Displaying all plays from the database.")
-            else:
-                st.write("This game is still in progress. Displaying current plays from the database.")
-            all_plays = get_all_plays_from_db(st.session_state.selected_game_id)
-            if all_plays:
-                df = pd.DataFrame(all_plays, columns=['game_id', 'action_number', 'clock', 'timeActual', 'period', 'periodType',
-                                                      'team_id', 'teamTricode', 'actionType', 'subType', 'descriptor',
-                                                      'qualifiers', 'personId', 'x', 'y', 'possession', 'scoreHome', 'scoreAway', 'description'])
-                df['clock'] = df['clock'].str.replace('PT', '').str.replace('M', ':').str.replace('S', '')
-                df = df[['period', 'teamTricode', 'clock', 'description', 'scoreHome', 'scoreAway']]
-                df.rename(columns={'teamTricode': 'team', 'clock': 'time remaining'}, inplace=True)
-                
-                if not df.empty:
-                    # Display final score
-                    final_play = df.iloc[0]
-                    st.header(f"Final Score: {st.session_state.home_team} {final_play['scoreHome']} - {st.session_state.away_team} {final_play['scoreAway']}")
-                    
-                    # Display all plays
-                    st.dataframe(df)
-                else:
-                    st.write("No plays found for this game.")
-            else:
-                st.write("No plays found for this game in the database.")
-        else:
-            try:
-                # Subscribe to the topic for the selected game
-                topic = "nba-plays"
-                consumer.subscribe([topic])
 
-                # Create empty lists to store the plays and scores
-                plays = []
-                home_score = 0
-                away_score = 0
+            # Create placeholders for the score, DataFrame, and refresh timer
+            score_placeholder = st.empty()
+            df_placeholder = st.empty()
+            refresh_placeholder = st.empty()
 
-                # Create placeholders for the score and DataFrame
-                score_placeholder = st.empty()
-                df_placeholder = st.empty()
+            def update_display():
+                if game_over:
+                    all_plays = get_all_plays_from_db(st.session_state.selected_game_id)
+                    if all_plays:
+                        columns = [
+                            'game_id', 'action_number', 'clock', 'timeActual', 'period', 'periodType',
+                            'team_id', 'teamTricode', 'actionType', 'subType', 'descriptor',
+                            'qualifiers', 'personId', 'x', 'y', 'possession', 'scoreHome', 'scoreAway', 'description'
+                        ]
+                        df = pd.DataFrame(all_plays, columns=columns)
 
-                # Poll for messages
-                while True:
-                    msg = consumer.poll(1.0)
+                        # Convert 'qualifiers' from JSON string to list
+                        df['qualifiers'] = df['qualifiers'].apply(lambda x: json.loads(x) if x else None)
 
-                    if msg is None:
-                        continue
-                    if msg.error():
-                        if msg.error().code() == KafkaError._PARTITION_EOF:
-                            continue
+                        # Clean up 'clock' field
+                        df['clock'] = df['clock'].apply(lambda x: x.replace('PT', '').replace('M', ':').replace('S', '') if isinstance(x, str) else x)
+
+                        # Add 'Court Coordinates' column
+                        df['Court Coordinates'] = df.apply(lambda row: f"({row['x']}, {row['y']})" if pd.notnull(row['x']) and pd.notnull(row['y']) else None, axis=1)
+
+                        # Rename columns
+                        df = df.rename(columns={
+                            'period': 'Period',
+                            'clock': 'Time Remaining',
+                            'teamTricode': 'Team',
+                            'description': 'Play Description',
+                            'actionType': 'Action Type',
+                            'subType': 'Action Subtype',
+                            'descriptor': 'Descriptor',
+                            'qualifiers': 'Tags'
+                        })
+
+                        # Reorder columns
+                        columns_order = [
+                            'Period', 'Time Remaining', 'Team', 'Play Description', 'Action Type', 'Action Subtype',
+                            'Descriptor', 'Tags', 'Court Coordinates', 'scoreHome', 'scoreAway'
+                        ]
+                        df = df[columns_order]
+
+                        if not df.empty:
+                            latest_play = df.iloc[0]
+                            score_placeholder.header(f"Current Score: {st.session_state.home_team} {latest_play['scoreHome']} - {st.session_state.away_team} {latest_play['scoreAway']}")
+
+                            # Display selected columns
+                            df_placeholder.dataframe(df, hide_index=True)
                         else:
-                            st.error(f"Error: {msg.error()}")
-                            break
+                            st.write("No plays found for this game.")
+                    else:
+                        st.write("No plays found for this game in the database.")
+                else:
+                    consumer.subscribe(['nba-plays'])  # Subscribe to the nba-plays topic
+                    plays = []
+                    start_time = time.time()
 
-                    # Process the message
-                    play = json.loads(msg.value().decode('utf-8'))
-                    plays.append(play)
+                    while time.time() - start_time < 5:  # Poll for 5 seconds
+                        msg = consumer.poll(0.1)
+                        if msg is None:
+                            continue
+                        if msg.error():
+                            if msg.error().code() == KafkaError._PARTITION_EOF:
+                                continue
+                            else:
+                                st.error(f"Error: {msg.error()}")
+                                break
 
-                    # Update scores
-                    home_score = int(play['scoreHome'])
-                    away_score = int(play['scoreAway'])
+                        play_data = json.loads(msg.value().decode('utf-8'))
+                        if play_data['game_id'] == st.session_state.selected_game_id:
+                            plays.append(play_data)
 
-                    # Update score display
-                    score_placeholder.header(f"Current Score: {st.session_state.away_team} {away_score} - {st.session_state.home_team} {home_score}")
+                    if plays:
+                        df = pd.DataFrame(plays)
 
-                    # Create a DataFrame from the plays
-                    df = pd.DataFrame(plays)
-                    df = df[df['teamTricode'].isin([st.session_state.away_team, st.session_state.home_team])]
-                    df['clock'] = df['clock'].str.replace('PT', '').str.replace('M', ':').str.replace('S', '')
-                    df = df.sort_values(by='actionNumber', ascending=False)
-                    df = df[['period', 'teamTricode', 'clock', 'description']]
-                    df.rename(columns={'teamTricode': 'team', 'clock': 'time remaining'}, inplace=True)
-                    df = df.drop_duplicates()
+                        # Clean up 'clock' field if it exists
+                        if 'clock' in df.columns:
+                            df['clock'] = df['clock'].apply(lambda x: x.replace('PT', '').replace('M', ':').replace('S', '') if isinstance(x, str) else x)
 
-                    # Update the DataFrame display
-                    df_placeholder.dataframe(df)
-            except Exception as e:
-                st.error(f"An error occurred while fetching game plays: {str(e)}")
+                        # Add 'Court Coordinates' column if 'x' and 'y' exist
+                        if 'x' in df.columns and 'y' in df.columns:
+                            df['Court Coordinates'] = df.apply(lambda row: f"({row['x']}, {row['y']})" if pd.notnull(row['x']) and pd.notnull(row['y']) else None, axis=1)
 
-            finally:
-                consumer.close()
+                        # Rename columns
+                        column_mapping = {
+                            'period': 'Period',
+                            'clock': 'Time Remaining',
+                            'teamTricode': 'Team',
+                            'description': 'Play Description',
+                            'actionType': 'Action Type',
+                            'subType': 'Action Subtype',
+                            'descriptor': 'Descriptor',
+                            'qualifiers': 'Tags'
+                        }
+                        df = df.rename(columns={k: v for k, v in column_mapping.items() if k in df.columns})
+
+                        # Reorder columns
+                        columns_order = [
+                            'Period', 'Time Remaining', 'Team', 'Play Description', 'Action Type', 'Action Subtype',
+                            'Descriptor', 'Tags', 'Court Coordinates', 'scoreHome', 'scoreAway'
+                        ]
+                        df = df[[col for col in columns_order if col in df.columns]]
+
+                        if not df.empty:
+                            latest_play = df.iloc[0]
+                            if 'scoreHome' in latest_play and 'scoreAway' in latest_play:
+                                score_placeholder.header(f"Current Score: {st.session_state.home_team} {latest_play['scoreHome']} - {st.session_state.away_team} {latest_play['scoreAway']}")
+
+                            # Display selected columns
+                            df_placeholder.dataframe(df, hide_index=True)
+                        else:
+                            df_placeholder.write("No new plays in the last 5 seconds.")
+                    else:
+                        df_placeholder.write("No new plays in the last 5 seconds.")
+
+        # Polling loop
+        while not game_over:
+            if is_halftime(st.session_state.selected_game_id):
+                refresh_interval = 60  # 1 minute during halftime
+            else:
+                refresh_interval = 5  # 5 seconds during regular play
+
+            for i in range(refresh_interval, 0, -1):
+                if is_halftime(st.session_state.selected_game_id):
+                    refresh_placeholder.markdown(f"🏀 Halftime - Next refresh in **{i}** seconds")
+                else:
+                    refresh_placeholder.markdown(f"🔄 Next refresh in **{i}** seconds")
+                time.sleep(1)
+            update_display()  # Update the display
+            game_over = is_game_over(st.session_state.selected_game_id)
+
+        st.write("Game has ended. Final plays displayed above.")

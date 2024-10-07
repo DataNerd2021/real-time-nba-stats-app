@@ -1,6 +1,6 @@
 from nba_api.stats.endpoints import scoreboardv2
 from nba_api.live.nba.endpoints import playbyplay, boxscore
-from confluent_kafka import Producer, Consumer, KafkaError
+from confluent_kafka import Producer
 import json
 import time
 from datetime import datetime, date
@@ -15,19 +15,13 @@ conf = {
     'client.id': 'nba-play-producer'
 }
 
-kafka_config = {
-    'bootstrap.servers': 'localhost:9092',
-    'group.id': 'kafka_to_sqlite_transfer',
-    'auto.offset.reset': 'earliest'  # Start reading from the beginning of the topic
-}
-
 producer = Producer(conf)
 
 topic = 'nba-plays'
 
 # Database setup
 db_name = 'nba_plays.db'
-conn = sqlite3.connect(db_name)
+conn = sqlite3.connect(db_name, check_same_thread=False)
 cursor = conn.cursor()
 
 # Create table if it doesn't exist
@@ -56,6 +50,9 @@ def create_table_if_not_exists(cursor):
         PRIMARY KEY (game_id, action_number)
     )
     ''')
+    conn.commit()
+
+create_table_if_not_exists(cursor)
 
 def delivery_report(err, msg):
     if err is not None:
@@ -97,6 +94,7 @@ def insert_play(cursor, game_id, play):
         play.get('x'), play.get('y'), play.get('possession'),
         play.get('scoreHome'), play.get('scoreAway'), play.get('description')
     ))
+    conn.commit()
 
 def stream_game_plays(game_id, game_info):
     print(f"Starting to stream plays for game: {game_info}")
@@ -131,7 +129,7 @@ def stream_game_plays(game_id, game_info):
                 key = f"{game_id}_{play['actionNumber']:05d}"
                 producer.produce(topic, key=key, value=play_json, callback=delivery_report)
                 producer.flush()
-                insert_play(play)  # Insert play into the database
+                insert_play(cursor, game_id, play)  # Insert play into the database
 
                 last_event_num = max(last_event_num, play['actionNumber'])
 
@@ -152,47 +150,6 @@ def stream_game_plays(game_id, game_info):
 
         time.sleep(10)  # Poll for new plays every 10 seconds
 
-def transfer_kafka_to_sqlite():
-    consumer = Consumer(kafka_config)
-    consumer.subscribe([topic])
-
-    conn = sqlite3.connect(db_name)
-    cursor = conn.cursor()
-
-    create_table_if_not_exists(cursor)
-
-    try:
-        while True:
-            msg = consumer.poll(1.0)
-
-            if msg is None:
-                continue
-            if msg.error():
-                if msg.error().code() == KafkaError._PARTITION_EOF:
-                    print(f"Reached end of partition for {msg.topic()} [{msg.partition()}]")
-                    break
-                else:
-                    print(f"Error: {msg.error()}")
-                    break
-
-            # Extract game_id from the message key
-            key = msg.key().decode('utf-8')
-            game_id = key.split('_')[0]
-
-            play = json.loads(msg.value().decode('utf-8'))
-            insert_play(cursor, game_id, play)
-            conn.commit()
-
-            print(f"Inserted play: Game ID {game_id}, Action Number {play.get('actionNumber')}")
-
-    except KeyboardInterrupt:
-        print("Transfer interrupted by user")
-
-    finally:
-        consumer.close()
-        conn.close()
-        print("Transfer completed")
-               
 def stream_all_games(games):
     threads = []
     for game_id, game_info in games:
@@ -205,7 +162,6 @@ def stream_all_games(games):
         thread.join()
 
 if __name__ == "__main__":
-    transfer_kafka_to_sqlite()
     games = get_todays_games()
     if games:
         print(f"Found {len(games)} games for today. Starting to stream all games...")
