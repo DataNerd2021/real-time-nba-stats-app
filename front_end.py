@@ -43,12 +43,15 @@ def is_game_over(game_id):
         return False
 
 def get_all_plays_from_db(game_id):
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
     cursor.execute('''
     SELECT * FROM plays
     WHERE game_id = ?
     ORDER BY action_number DESC
     ''', (game_id,))
     plays = cursor.fetchall()
+    conn.close()
     return plays
 
 @st.cache_data(ttl=3600)
