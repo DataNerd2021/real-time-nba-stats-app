@@ -46,8 +46,8 @@ def is_halftime(game_id):
         box = boxscore.BoxScore(game_id)
         game_data = box.get_dict()
         period = game_data['game']['period']
-        clock_running = game_data['game']['isGameActivated']
-        return period == 2 and not clock_running
+        clock_running = game_data['game']['gameStatusText']
+        return period == 2 and clock_running == 'Halftime'
     except Exception as e:
         print(f"Error checking halftime status for {game_id}: {str(e)}")
         return False
