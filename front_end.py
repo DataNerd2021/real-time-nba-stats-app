@@ -47,7 +47,8 @@ def get_all_plays_from_db(game_id):
     WHERE game_id = ?
     ORDER BY action_number DESC
     ''', (game_id,))
-    return cursor.fetchall()
+    plays = cursor.fetchall()
+    return plays
 
 def get_team_name(team_id):
     team_details = teamdetails.TeamDetails(team_id=team_id)
@@ -93,6 +94,7 @@ else:
             # Create placeholders for the score and DataFrame
             score_placeholder = st.empty()
             df_placeholder = st.empty()
+            refresh_placeholder = st.empty()
 
             def update_display():
                 all_plays = get_all_plays_from_db(st.session_state.selected_game_id)
@@ -145,33 +147,14 @@ else:
 
             update_display()  # Initial display
 
-            if not game_over:
-                # Subscribe to the topic
-                topic = "nba-plays"
-                consumer = Consumer(kafka_config)
-                consumer.subscribe([topic])
+            # Polling loop
+            refresh_interval = 5  # seconds
+            while not game_over:
+                for i in range(refresh_interval, 0, -1):
+                    refresh_placeholder.markdown(f"🔄 Next refresh in **{i}** seconds")
+                    time.sleep(1)
+                update_display()  # Update the display
+                game_over = is_game_over(st.session_state.selected_game_id)
 
-                try:
-                    while True:
-                        msg = consumer.poll(1.0)
-                        if msg is None:
-                            continue
-                        if msg.error():
-                            if msg.error().code() == KafkaError._PARTITION_EOF:
-                                continue
-                            else:
-                                st.error(f"Error: {msg.error()}")
-                                break
 
-                        # Process the message
-                        play = json.loads(msg.value().decode('utf-8'))
-                        if play['gameId'] == st.session_state.selected_game_id:
-                            update_display()  # Update display when a new play for the selected game is received
-
-                        if st.session_state.get('stop_streaming', False):
-                            break
-
-                except KeyboardInterrupt:
-                    pass
-                finally:
-                    consumer.close()
+            st.write("Game has ended. Final plays displayed above.")
