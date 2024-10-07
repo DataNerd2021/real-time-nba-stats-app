@@ -41,6 +41,16 @@ def is_game_over(game_id):
     except Exception as e:
         print(f"Error checking game status for {game_id}: {str(e)}")
         return False
+def is_halftime(game_id):
+    try:
+        box = boxscore.BoxScore(game_id)
+        game_data = box.get_dict()
+        period = game_data['game']['period']
+        clock_running = game_data['game']['isGameActivated']
+        return period == 2 and not clock_running
+    except Exception as e:
+        print(f"Error checking halftime status for {game_id}: {str(e)}")
+        return False
 
 def get_all_plays_from_db(game_id):
     conn = sqlite3.connect(db_name)
@@ -101,14 +111,13 @@ else:
                 st.session_state.home_team = home_team
                 st.session_state.away_team = away_team
 
- 
-# ... (rest of the previous code remains the same)
+
 
     if 'selected_game_id' in st.session_state:
         if st.button("View Game Plays"):
             game_over = is_game_over(st.session_state.selected_game_id)
             
-            # Create placeholders for the score and DataFrame
+            # Create placeholders for the score, DataFrame, and refresh timer
             score_placeholder = st.empty()
             df_placeholder = st.empty()
             refresh_placeholder = st.empty()
@@ -161,24 +170,24 @@ else:
                         st.write("No plays found for this game.")
                 else:
                     st.write("No plays found for this game in the database.")
-                return print(f'{df_placeholder['Period'][0]} {df['Time Remaining'][0]}')
 
             update_display()  # Initial display
 
             # Polling loop
-            refresh_interval = 5  # seconds
             while not game_over:
-                if update_display() != '2 00:00.00':
-                    for i in range(refresh_interval, 0, -1):
-                        refresh_placeholder.markdown(f"🔄 Next refresh in **{i}** seconds")
-                        time.sleep(1)
+                if is_halftime(st.session_state.selected_game_id):
+                    refresh_interval = 60  # 1 minute during halftime
                 else:
-                    for i in range(60, 0, -1):
-                        refresh_placeholder.markdown(f"🔄 Next refresh in **{i}** seconds")
-                        time.sleep(1)
+                    refresh_interval = 10  # 10 seconds during regular play
 
+                for i in range(refresh_interval, 0, -1):
+                    if is_halftime(st.session_state.selected_game_id):
+                        refresh_placeholder.markdown(f"🏀 Halftime - Next refresh in **{i}** seconds")
+                    else:
+                        refresh_placeholder.markdown(f"🔄 Next refresh in **{i}** seconds")
+                    time.sleep(1)
+                
                 update_display()  # Update the display
                 game_over = is_game_over(st.session_state.selected_game_id)
-
 
             st.write("Game has ended. Final plays displayed above.")
