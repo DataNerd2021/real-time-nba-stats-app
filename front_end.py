@@ -161,15 +161,22 @@ else:
                         st.write("No plays found for this game.")
                 else:
                     st.write("No plays found for this game in the database.")
+                return print(f'{df_placeholder['Period'][0]} {df['Time Remaining'][0]}')
 
             update_display()  # Initial display
 
             # Polling loop
             refresh_interval = 5  # seconds
             while not game_over:
-                for i in range(refresh_interval, 0, -1):
-                    refresh_placeholder.markdown(f"🔄 Next refresh in **{i}** seconds")
-                    time.sleep(1)
+                if update_display() != '2 00:00.00':
+                    for i in range(refresh_interval, 0, -1):
+                        refresh_placeholder.markdown(f"🔄 Next refresh in **{i}** seconds")
+                        time.sleep(1)
+                else:
+                    for i in range(60, 0, -1):
+                        refresh_placeholder.markdown(f"🔄 Next refresh in **{i}** seconds")
+                        time.sleep(1)
+
                 update_display()  # Update the display
                 game_over = is_game_over(st.session_state.selected_game_id)
 
