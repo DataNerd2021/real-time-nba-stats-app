@@ -83,85 +83,95 @@ else:
                 st.session_state.home_team = home_team
                 st.session_state.away_team = away_team
 
-    # Display selected game and start ingestion
+ 
+# ... (rest of the previous code remains the same)
+
     if 'selected_game_id' in st.session_state:
         if st.button("View Game Plays"):
             game_over = is_game_over(st.session_state.selected_game_id)
             
-            if game_over:
-                st.write("This game has ended. Displaying all plays from the database.")
-            else:
-                st.write("This game is still in progress. Displaying current plays from the database.")
-            all_plays = get_all_plays_from_db(st.session_state.selected_game_id)
-            if all_plays:
-                df = pd.DataFrame(all_plays, columns=['game_id', 'action_number', 'clock', 'timeActual', 'period', 'periodType',
-                                                      'team_id', 'teamTricode', 'actionType', 'subType', 'descriptor',
-                                                      'qualifiers', 'personId', 'x', 'y', 'possession', 'scoreHome', 'scoreAway', 'description'])
-                df['clock'] = df['clock'].str.replace('PT', '').str.replace('M', ':').str.replace('S', '')
-                df = df[['period', 'teamTricode', 'clock', 'description', 'scoreHome', 'scoreAway']]
-                df.rename(columns={'teamTricode': 'team', 'clock': 'time remaining'}, inplace=True)
-                
-                if not df.empty:
-                    # Display final score
-                    final_play = df.iloc[0]
-                    st.header(f"Final Score: {st.session_state.home_team} {final_play['scoreHome']} - {st.session_state.away_team} {final_play['scoreAway']}")
+            # Create placeholders for the score and DataFrame
+            score_placeholder = st.empty()
+            df_placeholder = st.empty()
+
+            def update_display():
+                all_plays = get_all_plays_from_db(st.session_state.selected_game_id)
+                if all_plays:
+                    columns = [
+                        'game_id', 'action_number', 'clock', 'timeActual', 'period', 'periodType',
+                        'team_id', 'teamTricode', 'actionType', 'subType', 'descriptor',
+                        'qualifiers', 'personId', 'x', 'y', 'possession', 'scoreHome', 'scoreAway', 'description'
+                    ]
+                    df = pd.DataFrame(all_plays, columns=columns)
                     
-                    # Display all plays
-                    st.dataframe(df)
+                    # Convert 'qualifiers' from JSON string to list
+                    df['qualifiers'] = df['qualifiers'].apply(lambda x: json.loads(x) if x else None)
+                    
+                    # Clean up 'clock' field
+                    df['clock'] = df['clock'].apply(lambda x: x.replace('PT', '').replace('M', ':').replace('S', '') if isinstance(x, str) else x)
+                    
+                    # Add 'Court Coordinates' column
+                    df['Court Coordinates'] = df.apply(lambda row: f"({row['x']}, {row['y']})" if pd.notnull(row['x']) and pd.notnull(row['y']) else None, axis=1)
+                    
+                    # Rename columns
+                    df = df.rename(columns={
+                        'period': 'Period',
+                        'clock': 'Time Remaining',
+                        'teamTricode': 'Team',
+                        'description': 'Play Description',
+                        'actionType': 'Action Type',
+                        'subType': 'Action Subtype',
+                        'descriptor': 'Descriptor',
+                        'qualifiers': 'Tags'
+                    })
+                    
+                    # Reorder columns
+                    columns_order = [
+                        'Period', 'Time Remaining', 'Team', 'Play Description', 'Action Type', 'Action Subtype',
+                        'Descriptor', 'Tags', 'Court Coordinates', 'scoreHome', 'scoreAway'
+                    ]
+                    df = df[columns_order]
+                    
+                    if not df.empty:
+                        latest_play = df.iloc[0]
+                        score_placeholder.header(f"Current Score: {st.session_state.home_team} {latest_play['scoreHome']} - {st.session_state.away_team} {latest_play['scoreAway']}")
+                        
+                        # Display selected columns
+                        df_placeholder.dataframe(df, hide_index=True)
+                    else:
+                        st.write("No plays found for this game.")
                 else:
-                    st.write("No plays found for this game.")
-            else:
-                st.write("No plays found for this game in the database.")
-        else:
-            try:
+                    st.write("No plays found for this game in the database.")
+
+            update_display()  # Initial display
+
+            if not game_over:
                 # Subscribe to the topic
-                topic = f"nba-plays"
+                topic = "nba-plays"
+                consumer = Consumer(kafka_config)
                 consumer.subscribe([topic])
 
-                # Create an empty list to store the plays
-                plays = []
-
-                # Create a placeholder for the DataFrame
-                df_placeholder = st.empty()
-
-                # Display the results
-                st.write("Latest Game Plays:")
-
-                # Poll for messages
-                while True:
-                    msg = consumer.poll(1.0)
-
-                    if msg is None:
-                        continue
-                    if msg.error():
-                        if msg.error().code() == KafkaError._PARTITION_EOF:
+                try:
+                    while True:
+                        msg = consumer.poll(1.0)
+                        if msg is None:
                             continue
-                        else:
-                            st.error(f"Error: {msg.error()}")
+                        if msg.error():
+                            if msg.error().code() == KafkaError._PARTITION_EOF:
+                                continue
+                            else:
+                                st.error(f"Error: {msg.error()}")
+                                break
+
+                        # Process the message
+                        play = json.loads(msg.value().decode('utf-8'))
+                        if play['gameId'] == st.session_state.selected_game_id:
+                            update_display()  # Update display when a new play for the selected game is received
+
+                        if st.session_state.get('stop_streaming', False):
                             break
 
-                    # Process the message
-                    play = json.loads(msg.value().decode('utf-8'))
-                    plays.append(play)
-
-                    # Create a DataFrame from the plays
-                    df = pd.DataFrame(plays)
-                    df = df[df['teamTricode'].isin([st.session_state.away_team, st.session_state.home_team])]
-                    df['clock'] = df['clock'].str.replace('PT', '').str.replace('M', ':').str.replace('S', '')
-                    df = df.sort_values(by='actionNumber', ascending=False)
-                    df = df[['period', 'teamTricode', 'clock', 'description']]
-                    df.rename(columns={'teamTricode': 'team', 'clock': 'time remaining'}, inplace=True)
-                    df = df.drop_duplicates()
-
-                    # Update the DataFrame display
-                    df_placeholder.dataframe(df)
-
-                    # Keep only the last 10 plays
-                    if len(plays) > 10:
-                        plays.pop(0)
-            except Exception as e:
-                st.error(f"An error occurred while fetching game plays: {str(e)}")
-            finally:
-                # Close the consumer
-                consumer.close()
-
+                except KeyboardInterrupt:
+                    pass
+                finally:
+                    consumer.close()
