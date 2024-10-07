@@ -176,7 +176,7 @@ else:
                 if is_halftime(st.session_state.selected_game_id):
                     refresh_interval = 60  # 1 minute during halftime
                 else:
-                    refresh_interval = 10  # 10 seconds during regular play
+                    refresh_interval = 5  # 5 seconds during regular play
 
                 for i in range(refresh_interval, 0, -1):
                     if is_halftime(st.session_state.selected_game_id):
