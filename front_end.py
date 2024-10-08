@@ -204,24 +204,28 @@ else:
                         ]
                 all_plays = get_all_plays_from_db(st.session_state.selected_game_id)
                 if not game_over:
+                    consumer = Consumer(kafka_config)
                     consumer.subscribe(['nba-plays'])
                     start_time = time.time()
                     
-                    while time.time() - start_time < 5:
-                        msg = consumer.poll(0.1)
-                        if msg is None:
-                            continue
-                        if msg.error():
-                            if msg.error().code() == KafkaError._PARTITION_EOF:
+                    try:
+                        while time.time() - start_time < 3:
+                            msg = consumer.poll(0.1)
+                            if msg is None:
                                 continue
-                            else:
-                                st.error(f"Error: {msg.error()}")
-                                break
+                            if msg.error():
+                                if msg.error().code() == KafkaError._PARTITION_EOF:
+                                    continue
+                                else:
+                                    st.error(f"Error: {msg.error()}")
+                                    break
 
-                        play_data = json.loads(msg.value().decode('utf-8'))
-                        if play_data['gameId'] == st.session_state.selected_game_id:
-                            play_tuple = tuple(play_data.get(col, None) for col in columns)
-                            all_plays.append(play_tuple)
+                            play_data = json.loads(msg.value().decode('utf-8'))
+                            if play_data['gameId'] == st.session_state.selected_game_id:
+                                play_tuple = tuple(play_data.get(col, None) for col in columns)
+                                all_plays.append(play_tuple)
+                    finally:
+                        consumer.close()
 
                     if all_plays:
                         
