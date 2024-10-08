@@ -4,7 +4,6 @@ from confluent_kafka import Consumer, KafkaError
 from nba_api.stats.endpoints import scoreboardv2, teamdetails
 from nba_api.live.nba.endpoints import boxscore
 import json
-import threading
 import time
 from datetime import datetime
 import pytz
@@ -30,7 +29,7 @@ st.set_page_config(page_title="Real-Time NBA Stats App", page_icon=":basketball:
 
 st.title(":basketball: Real-Time NBA Stats App (Beta)")
 
-st.write("This app allows you to search for NBA games and view real-time plays and stats for those games.")
+st.write("This app allows you to search for NBA games and view real-time plays for those games.")
 
 def is_game_over(game_id):
     try:
@@ -123,18 +122,38 @@ else:
             refresh_placeholder = st.empty()
 
             def update_display():
-                if game_over:
-                    all_plays = get_all_plays_from_db(st.session_state.selected_game_id)
-                    if all_plays:
-                        columns = [
+                columns = [
                             'game_id', 'action_number', 'clock', 'timeActual', 'period', 'periodType',
                             'team_id', 'teamTricode', 'actionType', 'subType', 'descriptor',
                             'qualifiers', 'personId', 'x', 'y', 'possession', 'scoreHome', 'scoreAway', 'description'
                         ]
+                all_plays = get_all_plays_from_db(st.session_state.selected_game_id)
+                if not game_over:
+                    consumer.subscribe(['nba-plays'])
+                    start_time = time.time()
+                    
+                    while time.time() - start_time < 5:
+                        msg = consumer.poll(0.1)
+                        if msg is None:
+                            continue
+                        if msg.error():
+                            if msg.error().code() == KafkaError._PARTITION_EOF:
+                                continue
+                            else:
+                                st.error(f"Error: {msg.error()}")
+                                break
+
+                        play_data = json.loads(msg.value().decode('utf-8'))
+                        if play_data['gameId'] == st.session_state.selected_game_id:
+                            play_tuple = tuple(play_data.get(col, None) for col in columns)
+                            all_plays.append(play_tuple)
+
+                    if all_plays:
+                        
                         df = pd.DataFrame(all_plays, columns=columns)
 
                         # Convert 'qualifiers' from JSON string to list
-                        df['qualifiers'] = df['qualifiers'].apply(lambda x: json.loads(x) if x else None)
+                        df['qualifiers'] = df['qualifiers'].apply(lambda x: json.loads(x) if isinstance(x, str) else x)
 
                         # Clean up 'clock' field
                         df['clock'] = df['clock'].apply(lambda x: x.replace('PT', '').replace('M', ':').replace('S', '') if isinstance(x, str) else x)
@@ -160,6 +179,8 @@ else:
                             'Descriptor', 'Tags', 'Court Coordinates', 'scoreHome', 'scoreAway'
                         ]
                         df = df[columns_order]
+                        
+                        df = df.sort_values(by=['Period', 'Time Remaining'], ascending=[False, True])
 
                         if not df.empty:
                             latest_play = df.iloc[0]
@@ -176,7 +197,7 @@ else:
                     plays = []
                     start_time = time.time()
 
-                    while time.time() - start_time < 5:  # Poll for 5 seconds
+                    while time.time() - start_time < 3:  # Poll for 5 seconds
                         msg = consumer.poll(0.1)
                         if msg is None:
                             continue
@@ -188,7 +209,7 @@ else:
                                 break
 
                         play_data = json.loads(msg.value().decode('utf-8'))
-                        if play_data['game_id'] == st.session_state.selected_game_id:
+                        if play_data['gameId'] == st.session_state.selected_game_id:
                             plays.append(play_data)
 
                     if plays:
@@ -230,24 +251,25 @@ else:
                             # Display selected columns
                             df_placeholder.dataframe(df, hide_index=True)
                         else:
+                            df_placeholder.dataframe(df, hide_index=True)
                             df_placeholder.write("No new plays in the last 5 seconds.")
                     else:
                         df_placeholder.write("No new plays in the last 5 seconds.")
 
-        # Polling loop
-        while not game_over:
-            if is_halftime(st.session_state.selected_game_id):
-                refresh_interval = 60  # 1 minute during halftime
-            else:
-                refresh_interval = 5  # 5 seconds during regular play
-
-            for i in range(refresh_interval, 0, -1):
+            # Polling loop
+            while not game_over:
                 if is_halftime(st.session_state.selected_game_id):
-                    refresh_placeholder.markdown(f"🏀 Halftime - Next refresh in **{i}** seconds")
+                    refresh_interval = 60  # 1 minute during halftime
                 else:
-                    refresh_placeholder.markdown(f"🔄 Next refresh in **{i}** seconds")
-                time.sleep(1)
-            update_display()  # Update the display
-            game_over = is_game_over(st.session_state.selected_game_id)
+                    refresh_interval = 3  # 5 seconds during regular play
 
-        st.write("Game has ended. Final plays displayed above.")
+                for i in range(refresh_interval, 0, -1):
+                    if is_halftime(st.session_state.selected_game_id):
+                        refresh_placeholder.markdown(f"🏀 Halftime - Next refresh in **{i}** seconds")
+                    else:
+                        refresh_placeholder.markdown(f"🔄 Next refresh in **{i}** seconds")
+                    time.sleep(1)
+                update_display()  # Update the display
+                game_over = is_game_over(st.session_state.selected_game_id)
+
+            st.write("Game has ended. Final plays displayed above.")
