@@ -1,0 +1,39 @@
+[2024-10-08T03:10:20.766+0000] {local_task_job_runner.py:123} INFO - ::group::Pre task execution logs
+[2024-10-08T03:10:20.773+0000] {taskinstance.py:2612} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: update_nba_injury_data_v01.get_new_injuries manual__2024-10-08T03:10:19.888075+00:00 [queued]>
+[2024-10-08T03:10:20.777+0000] {taskinstance.py:2612} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: update_nba_injury_data_v01.get_new_injuries manual__2024-10-08T03:10:19.888075+00:00 [queued]>
+[2024-10-08T03:10:20.777+0000] {taskinstance.py:2865} INFO - Starting attempt 1 of 4
+[2024-10-08T03:10:20.784+0000] {taskinstance.py:2888} INFO - Executing <Task(_PythonDecoratedOperator): get_new_injuries> on 2024-10-08 03:10:19.888075+00:00
+[2024-10-08T03:10:20.788+0000] {standard_task_runner.py:104} INFO - Running: ['***', 'tasks', 'run', 'update_nba_injury_data_v01', 'get_new_injuries', 'manual__2024-10-08T03:10:19.888075+00:00', '--job-id', '163', '--raw', '--subdir', 'DAGS_FOLDER/injury_data_dag.py', '--cfg-path', '/tmp/tmp0u38197e']
+[2024-10-08T03:10:20.789+0000] {standard_task_runner.py:105} INFO - Job 163: Subtask get_new_injuries
+[2024-10-08T03:10:20.790+0000] {logging_mixin.py:190} WARNING - /home/***/.local/lib/python3.12/site-packages/***/task/task_runner/standard_task_runner.py:70 DeprecationWarning: This process (pid=2008) is multi-threaded, use of fork() may lead to deadlocks in the child.
+[2024-10-08T03:10:20.791+0000] {standard_task_runner.py:72} INFO - Started process 2011 to run task
+[2024-10-08T03:10:20.811+0000] {task_command.py:467} INFO - Running <TaskInstance: update_nba_injury_data_v01.get_new_injuries manual__2024-10-08T03:10:19.888075+00:00 [running]> on host b38e3fb9e719
+[2024-10-08T03:10:20.846+0000] {taskinstance.py:3131} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='Daymon' AIRFLOW_CTX_DAG_ID='update_nba_injury_data_v01' AIRFLOW_CTX_TASK_ID='get_new_injuries' AIRFLOW_CTX_EXECUTION_DATE='2024-10-08T03:10:19.888075+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='manual__2024-10-08T03:10:19.888075+00:00'
+[2024-10-08T03:10:20.847+0000] {logging_mixin.py:190} INFO - Task instance is in running state
+[2024-10-08T03:10:20.847+0000] {logging_mixin.py:190} INFO -  Previous state of the Task instance: queued
+[2024-10-08T03:10:20.847+0000] {logging_mixin.py:190} INFO - Current task name:get_new_injuries state:running start_date:2024-10-08 03:10:20.773761+00:00
+[2024-10-08T03:10:20.848+0000] {logging_mixin.py:190} INFO - Dag name:update_nba_injury_data_v01 and current dag run status:running
+[2024-10-08T03:10:20.848+0000] {taskinstance.py:731} INFO - ::endgroup::
+[2024-10-08T03:10:21.165+0000] {python.py:240} INFO - Done. Returned value was:                   name  ...                                            comment
+0           Seth Lundy  ...  Sep 30: Hawks general manager Landry Fields sa...
+1       Onyeka Okongwu  ...  Sep 30: Hawks general manager Landry Fields sa...
+0   Kristaps Porzingis  ...  Sep 24: Brad Stevens said that Porzingis (foot...
+0      Trendon Watford  ...  Oct 7: Watford will miss at least two weeks wi...
+1       Day'Ron Sharpe  ...  Oct 7: Sharpe will miss at least six weeks wit...
+..                 ...  ...                                                ...
+3          Bruce Brown  ...  Sep 30: The Raptors announced Brown underwent ...
+4       Ja'Kobe Walter  ...  Sep 27: Walter sprained his acromioclavicular ...
+0          Patty Mills  ...  Oct 4: Mills (rest) will not play against the ...
+0      Malcolm Brogdon  ...  Oct 7: Brogdon (hand) is expected to miss at l...
+1           Saddiq Bey  ...  Jul 10: Bey has agreed to a three-year, $20 mi...
+
+[88 rows x 5 columns]
+[2024-10-08T03:10:21.188+0000] {taskinstance.py:340} INFO - ::group::Post task execution logs
+[2024-10-08T03:10:21.188+0000] {taskinstance.py:352} INFO - Marking task as SUCCESS. dag_id=update_nba_injury_data_v01, task_id=get_new_injuries, run_id=manual__2024-10-08T03:10:19.888075+00:00, execution_date=20241008T031019, start_date=20241008T031020, end_date=20241008T031021
+[2024-10-08T03:10:21.192+0000] {logging_mixin.py:190} INFO - Task instance in success state
+[2024-10-08T03:10:21.193+0000] {logging_mixin.py:190} INFO -  Previous state of the Task instance: running
+[2024-10-08T03:10:21.193+0000] {logging_mixin.py:190} INFO - Dag name:update_nba_injury_data_v01 queued_at:2024-10-08 03:10:19.894830+00:00
+[2024-10-08T03:10:21.193+0000] {logging_mixin.py:190} INFO - Task hostname:b38e3fb9e719 operator:_PythonDecoratedOperator
+[2024-10-08T03:10:21.205+0000] {local_task_job_runner.py:266} INFO - Task exited with return code 0
+[2024-10-08T03:10:21.215+0000] {taskinstance.py:3900} INFO - 0 downstream tasks scheduled from follow-on schedule check
+[2024-10-08T03:10:21.216+0000] {local_task_job_runner.py:245} INFO - ::endgroup::

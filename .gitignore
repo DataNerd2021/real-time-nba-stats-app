@@ -2,3 +2,5 @@
 *.pyo
 .env
 venv/
+venv3.11/
+Airflow/logs/scheduler/latest/*

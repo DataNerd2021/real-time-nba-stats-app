@@ -1,0 +1,39 @@
+[2024-10-08T03:10:22.657+0000] {local_task_job_runner.py:123} INFO - ::group::Pre task execution logs
+[2024-10-08T03:10:22.665+0000] {taskinstance.py:2612} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: update_nba_injury_data_v01.compare_data manual__2024-10-08T03:10:19.888075+00:00 [queued]>
+[2024-10-08T03:10:22.669+0000] {taskinstance.py:2612} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: update_nba_injury_data_v01.compare_data manual__2024-10-08T03:10:19.888075+00:00 [queued]>
+[2024-10-08T03:10:22.669+0000] {taskinstance.py:2865} INFO - Starting attempt 1 of 4
+[2024-10-08T03:10:22.675+0000] {taskinstance.py:2888} INFO - Executing <Task(_PythonDecoratedOperator): compare_data> on 2024-10-08 03:10:19.888075+00:00
+[2024-10-08T03:10:22.679+0000] {standard_task_runner.py:104} INFO - Running: ['***', 'tasks', 'run', 'update_nba_injury_data_v01', 'compare_data', 'manual__2024-10-08T03:10:19.888075+00:00', '--job-id', '166', '--raw', '--subdir', 'DAGS_FOLDER/injury_data_dag.py', '--cfg-path', '/tmp/tmppoctivli']
+[2024-10-08T03:10:22.680+0000] {standard_task_runner.py:105} INFO - Job 166: Subtask compare_data
+[2024-10-08T03:10:22.681+0000] {logging_mixin.py:190} WARNING - /home/***/.local/lib/python3.12/site-packages/***/task/task_runner/standard_task_runner.py:70 DeprecationWarning: This process (pid=2026) is multi-threaded, use of fork() may lead to deadlocks in the child.
+[2024-10-08T03:10:22.682+0000] {standard_task_runner.py:72} INFO - Started process 2028 to run task
+[2024-10-08T03:10:22.700+0000] {task_command.py:467} INFO - Running <TaskInstance: update_nba_injury_data_v01.compare_data manual__2024-10-08T03:10:19.888075+00:00 [running]> on host b38e3fb9e719
+[2024-10-08T03:10:22.779+0000] {taskinstance.py:3131} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='Daymon' AIRFLOW_CTX_DAG_ID='update_nba_injury_data_v01' AIRFLOW_CTX_TASK_ID='compare_data' AIRFLOW_CTX_EXECUTION_DATE='2024-10-08T03:10:19.888075+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='manual__2024-10-08T03:10:19.888075+00:00'
+[2024-10-08T03:10:22.780+0000] {logging_mixin.py:190} INFO - Task instance is in running state
+[2024-10-08T03:10:22.780+0000] {logging_mixin.py:190} INFO -  Previous state of the Task instance: queued
+[2024-10-08T03:10:22.780+0000] {logging_mixin.py:190} INFO - Current task name:compare_data state:running start_date:2024-10-08 03:10:22.665606+00:00
+[2024-10-08T03:10:22.781+0000] {logging_mixin.py:190} INFO - Dag name:update_nba_injury_data_v01 and current dag run status:running
+[2024-10-08T03:10:22.781+0000] {taskinstance.py:731} INFO - ::endgroup::
+[2024-10-08T03:10:22.788+0000] {python.py:240} INFO - Done. Returned value was:                   name  ... new_or_updated
+0           Seth Lundy  ...              0
+1       Onyeka Okongwu  ...              0
+2   Kristaps Porzingis  ...              0
+3      Trendon Watford  ...              0
+4       Day'Ron Sharpe  ...              0
+..                 ...  ...            ...
+83         Bruce Brown  ...              0
+84      Ja'Kobe Walter  ...              0
+85         Patty Mills  ...              0
+86     Malcolm Brogdon  ...              0
+87          Saddiq Bey  ...              0
+
+[88 rows x 6 columns]
+[2024-10-08T03:10:22.804+0000] {taskinstance.py:340} INFO - ::group::Post task execution logs
+[2024-10-08T03:10:22.804+0000] {taskinstance.py:352} INFO - Marking task as SUCCESS. dag_id=update_nba_injury_data_v01, task_id=compare_data, run_id=manual__2024-10-08T03:10:19.888075+00:00, execution_date=20241008T031019, start_date=20241008T031022, end_date=20241008T031022
+[2024-10-08T03:10:22.808+0000] {logging_mixin.py:190} INFO - Task instance in success state
+[2024-10-08T03:10:22.808+0000] {logging_mixin.py:190} INFO -  Previous state of the Task instance: running
+[2024-10-08T03:10:22.809+0000] {logging_mixin.py:190} INFO - Dag name:update_nba_injury_data_v01 queued_at:2024-10-08 03:10:19.894830+00:00
+[2024-10-08T03:10:22.809+0000] {logging_mixin.py:190} INFO - Task hostname:b38e3fb9e719 operator:_PythonDecoratedOperator
+[2024-10-08T03:10:22.815+0000] {local_task_job_runner.py:266} INFO - Task exited with return code 0
+[2024-10-08T03:10:22.826+0000] {taskinstance.py:3900} INFO - 1 downstream tasks scheduled from follow-on schedule check
+[2024-10-08T03:10:22.827+0000] {local_task_job_runner.py:245} INFO - ::endgroup::

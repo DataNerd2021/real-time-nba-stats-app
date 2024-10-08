@@ -5,3 +5,11 @@ tqdm
 confluent-kafka
 accelerate
 streamlit
+lxml
+sqlalchemy
+psycopg2
+# Include the constraint file for Python 3.8
+-c https://raw.githubusercontent.com/apache/airflow/constraints-2.10.2/constraints-3.8.txt
+# Specify the version of apache-airflow you want to install
+apache-airflow==2.10.2
+kafka-python
