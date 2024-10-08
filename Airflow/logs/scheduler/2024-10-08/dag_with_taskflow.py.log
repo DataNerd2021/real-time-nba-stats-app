@@ -96,3 +96,94 @@
 [2024-10-08T03:14:20.345+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:14:20.345+0000] {dag.py:3239} INFO - Sync 1 DAGs
 [2024-10-08T03:14:20.356+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:14:20.355+0000] {dag.py:4180} INFO - Setting next_dagrun for dag_with_taskflow_taskflow_decorator_v01 to 2024-10-01 00:00:00+00:00, run_after=2024-10-01 01:00:00+00:00
 [2024-10-08T03:14:20.374+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/dag_with_taskflow.py took 0.054 seconds
+[2024-10-08T03:14:50.433+0000] {processor.py:186} INFO - Started process (PID=4476) to work on /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:14:50.433+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/dag_with_taskflow.py for tasks to queue
+[2024-10-08T03:14:50.435+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:14:50.435+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:14:50.446+0000] {processor.py:925} INFO - DAG(s) 'dag_with_taskflow_taskflow_decorator_v01' retrieved from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:14:50.455+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:14:50.455+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:14:50.466+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:14:50.466+0000] {dag.py:4180} INFO - Setting next_dagrun for dag_with_taskflow_taskflow_decorator_v01 to 2024-10-01 00:00:00+00:00, run_after=2024-10-01 01:00:00+00:00
+[2024-10-08T03:14:50.483+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/dag_with_taskflow.py took 0.053 seconds
+[2024-10-08T03:15:20.736+0000] {processor.py:186} INFO - Started process (PID=4777) to work on /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:15:20.737+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/dag_with_taskflow.py for tasks to queue
+[2024-10-08T03:15:20.738+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:15:20.737+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:15:20.747+0000] {processor.py:925} INFO - DAG(s) 'dag_with_taskflow_taskflow_decorator_v01' retrieved from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:15:20.756+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:15:20.756+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:15:20.767+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:15:20.767+0000] {dag.py:4180} INFO - Setting next_dagrun for dag_with_taskflow_taskflow_decorator_v01 to 2024-10-01 00:00:00+00:00, run_after=2024-10-01 01:00:00+00:00
+[2024-10-08T03:15:20.777+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/dag_with_taskflow.py took 0.044 seconds
+[2024-10-08T03:15:51.427+0000] {processor.py:186} INFO - Started process (PID=5078) to work on /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:15:51.427+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/dag_with_taskflow.py for tasks to queue
+[2024-10-08T03:15:51.428+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:15:51.428+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:15:51.440+0000] {processor.py:925} INFO - DAG(s) 'dag_with_taskflow_taskflow_decorator_v01' retrieved from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:15:51.449+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:15:51.449+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:15:51.461+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:15:51.460+0000] {dag.py:4180} INFO - Setting next_dagrun for dag_with_taskflow_taskflow_decorator_v01 to 2024-10-01 00:00:00+00:00, run_after=2024-10-01 01:00:00+00:00
+[2024-10-08T03:15:51.469+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/dag_with_taskflow.py took 0.046 seconds
+[2024-10-08T03:16:21.626+0000] {processor.py:186} INFO - Started process (PID=5379) to work on /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:16:21.627+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/dag_with_taskflow.py for tasks to queue
+[2024-10-08T03:16:21.628+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:16:21.628+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:16:21.642+0000] {processor.py:925} INFO - DAG(s) 'dag_with_taskflow_taskflow_decorator_v01' retrieved from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:16:21.650+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:16:21.650+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:16:21.662+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:16:21.662+0000] {dag.py:4180} INFO - Setting next_dagrun for dag_with_taskflow_taskflow_decorator_v01 to 2024-10-01 00:00:00+00:00, run_after=2024-10-01 01:00:00+00:00
+[2024-10-08T03:16:21.671+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/dag_with_taskflow.py took 0.049 seconds
+[2024-10-08T03:16:52.458+0000] {processor.py:186} INFO - Started process (PID=5680) to work on /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:16:52.459+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/dag_with_taskflow.py for tasks to queue
+[2024-10-08T03:16:52.460+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:16:52.460+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:16:52.471+0000] {processor.py:925} INFO - DAG(s) 'dag_with_taskflow_taskflow_decorator_v01' retrieved from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:16:52.480+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:16:52.480+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:16:52.492+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:16:52.492+0000] {dag.py:4180} INFO - Setting next_dagrun for dag_with_taskflow_taskflow_decorator_v01 to 2024-10-01 00:00:00+00:00, run_after=2024-10-01 01:00:00+00:00
+[2024-10-08T03:16:52.518+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/dag_with_taskflow.py took 0.062 seconds
+[2024-10-08T03:17:23.463+0000] {processor.py:186} INFO - Started process (PID=5981) to work on /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:17:23.464+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/dag_with_taskflow.py for tasks to queue
+[2024-10-08T03:17:23.466+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:17:23.465+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:17:23.476+0000] {processor.py:925} INFO - DAG(s) 'dag_with_taskflow_taskflow_decorator_v01' retrieved from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:17:23.485+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:17:23.485+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:17:23.496+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:17:23.496+0000] {dag.py:4180} INFO - Setting next_dagrun for dag_with_taskflow_taskflow_decorator_v01 to 2024-10-01 00:00:00+00:00, run_after=2024-10-01 01:00:00+00:00
+[2024-10-08T03:17:23.505+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/dag_with_taskflow.py took 0.046 seconds
+[2024-10-08T03:17:53.938+0000] {processor.py:186} INFO - Started process (PID=6282) to work on /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:17:53.938+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/dag_with_taskflow.py for tasks to queue
+[2024-10-08T03:17:53.939+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:17:53.939+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:17:53.949+0000] {processor.py:925} INFO - DAG(s) 'dag_with_taskflow_taskflow_decorator_v01' retrieved from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:17:53.958+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:17:53.957+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:17:53.969+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:17:53.969+0000] {dag.py:4180} INFO - Setting next_dagrun for dag_with_taskflow_taskflow_decorator_v01 to 2024-10-01 00:00:00+00:00, run_after=2024-10-01 01:00:00+00:00
+[2024-10-08T03:17:53.985+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/dag_with_taskflow.py took 0.050 seconds
+[2024-10-08T03:18:24.227+0000] {processor.py:186} INFO - Started process (PID=6583) to work on /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:18:24.227+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/dag_with_taskflow.py for tasks to queue
+[2024-10-08T03:18:24.228+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:18:24.228+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:18:24.240+0000] {processor.py:925} INFO - DAG(s) 'dag_with_taskflow_taskflow_decorator_v01' retrieved from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:18:24.250+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:18:24.249+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:18:24.261+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:18:24.261+0000] {dag.py:4180} INFO - Setting next_dagrun for dag_with_taskflow_taskflow_decorator_v01 to 2024-10-01 00:00:00+00:00, run_after=2024-10-01 01:00:00+00:00
+[2024-10-08T03:18:24.278+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/dag_with_taskflow.py took 0.053 seconds
+[2024-10-08T03:18:54.527+0000] {processor.py:186} INFO - Started process (PID=6884) to work on /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:18:54.528+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/dag_with_taskflow.py for tasks to queue
+[2024-10-08T03:18:54.529+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:18:54.529+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:18:54.541+0000] {processor.py:925} INFO - DAG(s) 'dag_with_taskflow_taskflow_decorator_v01' retrieved from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:18:54.549+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:18:54.549+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:18:54.560+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:18:54.560+0000] {dag.py:4180} INFO - Setting next_dagrun for dag_with_taskflow_taskflow_decorator_v01 to 2024-10-01 00:00:00+00:00, run_after=2024-10-01 01:00:00+00:00
+[2024-10-08T03:18:54.577+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/dag_with_taskflow.py took 0.053 seconds
+[2024-10-08T03:19:24.703+0000] {processor.py:186} INFO - Started process (PID=7186) to work on /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:19:24.703+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/dag_with_taskflow.py for tasks to queue
+[2024-10-08T03:19:24.704+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:19:24.704+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:19:24.715+0000] {processor.py:925} INFO - DAG(s) 'dag_with_taskflow_taskflow_decorator_v01' retrieved from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:19:24.723+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:19:24.723+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:19:24.734+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:19:24.734+0000] {dag.py:4180} INFO - Setting next_dagrun for dag_with_taskflow_taskflow_decorator_v01 to 2024-10-01 00:00:00+00:00, run_after=2024-10-01 01:00:00+00:00
+[2024-10-08T03:19:24.743+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/dag_with_taskflow.py took 0.043 seconds
+[2024-10-08T03:19:55.106+0000] {processor.py:186} INFO - Started process (PID=7487) to work on /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:19:55.106+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/dag_with_taskflow.py for tasks to queue
+[2024-10-08T03:19:55.108+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:19:55.108+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:19:55.122+0000] {processor.py:925} INFO - DAG(s) 'dag_with_taskflow_taskflow_decorator_v01' retrieved from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:19:55.130+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:19:55.130+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:19:55.141+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:19:55.141+0000] {dag.py:4180} INFO - Setting next_dagrun for dag_with_taskflow_taskflow_decorator_v01 to 2024-10-01 00:00:00+00:00, run_after=2024-10-01 01:00:00+00:00
+[2024-10-08T03:19:55.150+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/dag_with_taskflow.py took 0.048 seconds
+[2024-10-08T03:20:25.280+0000] {processor.py:186} INFO - Started process (PID=7788) to work on /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:20:25.280+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/dag_with_taskflow.py for tasks to queue
+[2024-10-08T03:20:25.281+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:20:25.281+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:20:25.299+0000] {processor.py:925} INFO - DAG(s) 'dag_with_taskflow_taskflow_decorator_v01' retrieved from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:20:25.309+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:20:25.309+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:20:25.320+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:20:25.320+0000] {dag.py:4180} INFO - Setting next_dagrun for dag_with_taskflow_taskflow_decorator_v01 to 2024-10-01 00:00:00+00:00, run_after=2024-10-01 01:00:00+00:00
+[2024-10-08T03:20:25.329+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/dag_with_taskflow.py took 0.052 seconds
+[2024-10-08T03:20:56.044+0000] {processor.py:186} INFO - Started process (PID=8089) to work on /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:20:56.045+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/dag_with_taskflow.py for tasks to queue
+[2024-10-08T03:20:56.046+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:20:56.046+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:20:56.056+0000] {processor.py:925} INFO - DAG(s) 'dag_with_taskflow_taskflow_decorator_v01' retrieved from /opt/airflow/dags/dag_with_taskflow.py
+[2024-10-08T03:20:56.065+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:20:56.065+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:20:56.076+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:20:56.076+0000] {dag.py:4180} INFO - Setting next_dagrun for dag_with_taskflow_taskflow_decorator_v01 to 2024-10-01 00:00:00+00:00, run_after=2024-10-01 01:00:00+00:00
+[2024-10-08T03:20:56.085+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/dag_with_taskflow.py took 0.043 seconds

@@ -3,4 +3,6 @@
 .env
 venv/
 venv3.11/
-Airflow/logs/scheduler/latest/*
+Airflow/logs/*
+Airflow/logs/
+Airflow/logs/**/*

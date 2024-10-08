@@ -96,3 +96,94 @@
 [2024-10-08T03:14:20.345+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:14:20.344+0000] {dag.py:3239} INFO - Sync 1 DAGs
 [2024-10-08T03:14:20.356+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:14:20.356+0000] {dag.py:4180} INFO - Setting next_dagrun for update_nba_injury_data_v01 to 2024-10-08 03:00:00+00:00, run_after=2024-10-08 04:00:00+00:00
 [2024-10-08T03:14:20.375+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/injury_data_dag.py took 0.058 seconds
+[2024-10-08T03:14:50.428+0000] {processor.py:186} INFO - Started process (PID=4473) to work on /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:14:50.428+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/injury_data_dag.py for tasks to queue
+[2024-10-08T03:14:50.430+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:14:50.430+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:14:50.443+0000] {processor.py:925} INFO - DAG(s) 'update_nba_injury_data_v01' retrieved from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:14:50.453+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:14:50.453+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:14:50.465+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:14:50.465+0000] {dag.py:4180} INFO - Setting next_dagrun for update_nba_injury_data_v01 to 2024-10-08 03:00:00+00:00, run_after=2024-10-08 04:00:00+00:00
+[2024-10-08T03:14:50.483+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/injury_data_dag.py took 0.058 seconds
+[2024-10-08T03:15:20.733+0000] {processor.py:186} INFO - Started process (PID=4774) to work on /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:15:20.733+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/injury_data_dag.py for tasks to queue
+[2024-10-08T03:15:20.735+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:15:20.734+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:15:20.746+0000] {processor.py:925} INFO - DAG(s) 'update_nba_injury_data_v01' retrieved from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:15:20.755+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:15:20.755+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:15:20.767+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:15:20.767+0000] {dag.py:4180} INFO - Setting next_dagrun for update_nba_injury_data_v01 to 2024-10-08 03:00:00+00:00, run_after=2024-10-08 04:00:00+00:00
+[2024-10-08T03:15:20.776+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/injury_data_dag.py took 0.047 seconds
+[2024-10-08T03:15:51.424+0000] {processor.py:186} INFO - Started process (PID=5075) to work on /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:15:51.425+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/injury_data_dag.py for tasks to queue
+[2024-10-08T03:15:51.426+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:15:51.426+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:15:51.440+0000] {processor.py:925} INFO - DAG(s) 'update_nba_injury_data_v01' retrieved from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:15:51.449+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:15:51.449+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:15:51.461+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:15:51.461+0000] {dag.py:4180} INFO - Setting next_dagrun for update_nba_injury_data_v01 to 2024-10-08 03:00:00+00:00, run_after=2024-10-08 04:00:00+00:00
+[2024-10-08T03:15:51.470+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/injury_data_dag.py took 0.051 seconds
+[2024-10-08T03:16:21.622+0000] {processor.py:186} INFO - Started process (PID=5376) to work on /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:16:21.622+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/injury_data_dag.py for tasks to queue
+[2024-10-08T03:16:21.624+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:16:21.624+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:16:21.640+0000] {processor.py:925} INFO - DAG(s) 'update_nba_injury_data_v01' retrieved from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:16:21.650+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:16:21.650+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:16:21.662+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:16:21.662+0000] {dag.py:4180} INFO - Setting next_dagrun for update_nba_injury_data_v01 to 2024-10-08 03:00:00+00:00, run_after=2024-10-08 04:00:00+00:00
+[2024-10-08T03:16:21.674+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/injury_data_dag.py took 0.056 seconds
+[2024-10-08T03:16:52.454+0000] {processor.py:186} INFO - Started process (PID=5677) to work on /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:16:52.455+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/injury_data_dag.py for tasks to queue
+[2024-10-08T03:16:52.456+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:16:52.456+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:16:52.469+0000] {processor.py:925} INFO - DAG(s) 'update_nba_injury_data_v01' retrieved from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:16:52.479+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:16:52.479+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:16:52.492+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:16:52.492+0000] {dag.py:4180} INFO - Setting next_dagrun for update_nba_injury_data_v01 to 2024-10-08 03:00:00+00:00, run_after=2024-10-08 04:00:00+00:00
+[2024-10-08T03:16:52.518+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/injury_data_dag.py took 0.067 seconds
+[2024-10-08T03:17:23.457+0000] {processor.py:186} INFO - Started process (PID=5978) to work on /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:17:23.458+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/injury_data_dag.py for tasks to queue
+[2024-10-08T03:17:23.460+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:17:23.459+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:17:23.473+0000] {processor.py:925} INFO - DAG(s) 'update_nba_injury_data_v01' retrieved from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:17:23.483+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:17:23.483+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:17:23.495+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:17:23.495+0000] {dag.py:4180} INFO - Setting next_dagrun for update_nba_injury_data_v01 to 2024-10-08 03:00:00+00:00, run_after=2024-10-08 04:00:00+00:00
+[2024-10-08T03:17:23.504+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/injury_data_dag.py took 0.052 seconds
+[2024-10-08T03:17:53.933+0000] {processor.py:186} INFO - Started process (PID=6279) to work on /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:17:53.934+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/injury_data_dag.py for tasks to queue
+[2024-10-08T03:17:53.935+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:17:53.935+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:17:53.945+0000] {processor.py:925} INFO - DAG(s) 'update_nba_injury_data_v01' retrieved from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:17:53.955+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:17:53.955+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:17:53.967+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:17:53.967+0000] {dag.py:4180} INFO - Setting next_dagrun for update_nba_injury_data_v01 to 2024-10-08 03:00:00+00:00, run_after=2024-10-08 04:00:00+00:00
+[2024-10-08T03:17:53.985+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/injury_data_dag.py took 0.055 seconds
+[2024-10-08T03:18:24.223+0000] {processor.py:186} INFO - Started process (PID=6580) to work on /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:18:24.224+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/injury_data_dag.py for tasks to queue
+[2024-10-08T03:18:24.225+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:18:24.225+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:18:24.237+0000] {processor.py:925} INFO - DAG(s) 'update_nba_injury_data_v01' retrieved from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:18:24.247+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:18:24.247+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:18:24.260+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:18:24.260+0000] {dag.py:4180} INFO - Setting next_dagrun for update_nba_injury_data_v01 to 2024-10-08 03:00:00+00:00, run_after=2024-10-08 04:00:00+00:00
+[2024-10-08T03:18:24.278+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/injury_data_dag.py took 0.058 seconds
+[2024-10-08T03:18:54.523+0000] {processor.py:186} INFO - Started process (PID=6881) to work on /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:18:54.524+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/injury_data_dag.py for tasks to queue
+[2024-10-08T03:18:54.525+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:18:54.525+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:18:54.538+0000] {processor.py:925} INFO - DAG(s) 'update_nba_injury_data_v01' retrieved from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:18:54.548+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:18:54.547+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:18:54.560+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:18:54.559+0000] {dag.py:4180} INFO - Setting next_dagrun for update_nba_injury_data_v01 to 2024-10-08 03:00:00+00:00, run_after=2024-10-08 04:00:00+00:00
+[2024-10-08T03:18:54.577+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/injury_data_dag.py took 0.057 seconds
+[2024-10-08T03:19:24.699+0000] {processor.py:186} INFO - Started process (PID=7183) to work on /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:19:24.699+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/injury_data_dag.py for tasks to queue
+[2024-10-08T03:19:24.700+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:19:24.700+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:19:24.713+0000] {processor.py:925} INFO - DAG(s) 'update_nba_injury_data_v01' retrieved from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:19:24.723+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:19:24.723+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:19:24.734+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:19:24.734+0000] {dag.py:4180} INFO - Setting next_dagrun for update_nba_injury_data_v01 to 2024-10-08 03:00:00+00:00, run_after=2024-10-08 04:00:00+00:00
+[2024-10-08T03:19:24.743+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/injury_data_dag.py took 0.048 seconds
+[2024-10-08T03:19:55.100+0000] {processor.py:186} INFO - Started process (PID=7484) to work on /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:19:55.101+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/injury_data_dag.py for tasks to queue
+[2024-10-08T03:19:55.102+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:19:55.102+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:19:55.119+0000] {processor.py:925} INFO - DAG(s) 'update_nba_injury_data_v01' retrieved from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:19:55.129+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:19:55.129+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:19:55.141+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:19:55.141+0000] {dag.py:4180} INFO - Setting next_dagrun for update_nba_injury_data_v01 to 2024-10-08 03:00:00+00:00, run_after=2024-10-08 04:00:00+00:00
+[2024-10-08T03:19:55.149+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/injury_data_dag.py took 0.054 seconds
+[2024-10-08T03:20:25.275+0000] {processor.py:186} INFO - Started process (PID=7785) to work on /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:20:25.276+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/injury_data_dag.py for tasks to queue
+[2024-10-08T03:20:25.277+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:20:25.277+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:20:25.299+0000] {processor.py:925} INFO - DAG(s) 'update_nba_injury_data_v01' retrieved from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:20:25.309+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:20:25.309+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:20:25.320+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:20:25.320+0000] {dag.py:4180} INFO - Setting next_dagrun for update_nba_injury_data_v01 to 2024-10-08 03:00:00+00:00, run_after=2024-10-08 04:00:00+00:00
+[2024-10-08T03:20:25.329+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/injury_data_dag.py took 0.057 seconds
+[2024-10-08T03:20:56.041+0000] {processor.py:186} INFO - Started process (PID=8086) to work on /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:20:56.041+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/injury_data_dag.py for tasks to queue
+[2024-10-08T03:20:56.043+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:20:56.042+0000] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:20:56.055+0000] {processor.py:925} INFO - DAG(s) 'update_nba_injury_data_v01' retrieved from /opt/airflow/dags/injury_data_dag.py
+[2024-10-08T03:20:56.065+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:20:56.065+0000] {dag.py:3239} INFO - Sync 1 DAGs
+[2024-10-08T03:20:56.077+0000] {logging_mixin.py:190} INFO - [2024-10-08T03:20:56.077+0000] {dag.py:4180} INFO - Setting next_dagrun for update_nba_injury_data_v01 to 2024-10-08 03:00:00+00:00, run_after=2024-10-08 04:00:00+00:00
+[2024-10-08T03:20:56.086+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/injury_data_dag.py took 0.048 seconds
