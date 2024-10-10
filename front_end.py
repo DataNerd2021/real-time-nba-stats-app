@@ -25,11 +25,46 @@ cursor = conn.cursor()
 # Initialize Kafka consumer
 consumer = Consumer(kafka_config)
 
-st.set_page_config(page_title="Real-Time NBA Stats App", page_icon=":basketball:")
+st.set_page_config(page_title="Real-Time NBA Stats App", page_icon=":basketball:", layout="wide")
 
-st.title(":basketball: Real-Time NBA Stats App (Beta)")
+# custom CSS code
+st.markdown("""
+    <style>
+        .title-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .title-text {
+            font-size: 4em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .emoji {
+            font-size: 4em;
+        }
+        .stButton > button {
+            width: auto;
+            display: inline-block;
+            margin: 5px;
+            padding: 0.5em 1em;
+        }
+        .button-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
-st.write("This app allows you to search for NBA games and view real-time plays for those games.")
+st.markdown("""<div class="title-container">
+                <span class="emoji">🏀</span>
+                <span class="title-text">Real-Time NBA Stats App (Beta)</span>
+               </div>""", unsafe_allow_html=True)
+
+st.markdown("<h6 style='text-align: center; margin-top: 10px;'>This app allows you to search for NBA games and view real-time plays for those games.</h3>", unsafe_allow_html=True)
 
 def is_game_over(game_id):
     try:
@@ -81,6 +116,12 @@ def get_team_name(team_id, max_retries=3, delay=2):
             st.error(f"An unexpected error occurred: {str(e)}")
             return f"Team ID {team_id}"
 
+def set_game_state(game_id, label, home_team, away_team):
+    
+    st.session_state.selected_game_id = game_id
+    st.session_state.selected_game_label = label
+    st.session_state.home_team = home_team
+    st.session_state.away_team = away_team
 # Fetch today's games in Mountain Time
 mountain_tz = pytz.timezone("US/Mountain")
 today = datetime.now(mountain_tz).strftime("%Y-%m-%d")
@@ -92,9 +133,8 @@ else:
     games = games_data['resultSets'][0]['rowSet']
     st.write('')
     st.write('')
-    st.header("Select a Game:")
+    st.markdown("<h2 style='text-align: center;'>Select a Game:</h2>", unsafe_allow_html=True)
 
-    # Create a container for game buttons
     with st.container():
         for game in games:
             game_id = game[2]
@@ -104,11 +144,8 @@ else:
             home_team = get_team_name(home_team_id)
             away_team = get_team_name(away_team_id)
             label = f"{home_team} vs. {away_team} ({game_time_str.strip()})"
-            if st.button(label=label, key=f"game_{game_id}", use_container_width=True):
-                st.session_state.selected_game_id = game_id
-                st.session_state.selected_game_label = label
-                st.session_state.home_team = home_team
-                st.session_state.away_team = away_team
+            st.button(label=label, key=f"game_{game_id}", on_click=set_game_state, args=(game_id, label, home_team, away_team))
+
 
 
 
@@ -184,7 +221,7 @@ else:
 
                         if not df.empty:
                             latest_play = df.iloc[0]
-                            score_placeholder.header(f"Current Score: {st.session_state.home_team} {latest_play['scoreHome']} - {st.session_state.away_team} {latest_play['scoreAway']}")
+                            score_placeholder.info(f"Current Score: {st.session_state.home_team} {latest_play['scoreHome']} - {st.session_state.away_team} {latest_play['scoreAway']}")
 
                             # Display selected columns
                             df_placeholder.dataframe(df, hide_index=True)
@@ -213,8 +250,10 @@ else:
                             plays.append(play_data)
 
                     if plays:
-                        df = pd.DataFrame(plays)
-
+                        df = pd.DataFrame(plays, columns=columns)
+                        if df['period'].iloc[0] == 2 and df['description'].iloc[0] == 'Period End':
+                            st.write("HALFTIME! Waiting 5 Minutes Until Next Refresh")
+                            time.sleep(300)
                         # Clean up 'clock' field if it exists
                         if 'clock' in df.columns:
                             df['clock'] = df['clock'].apply(lambda x: x.replace('PT', '').replace('M', ':').replace('S', '') if isinstance(x, str) else x)
@@ -258,18 +297,8 @@ else:
 
             # Polling loop
             while not game_over:
-                if is_halftime(st.session_state.selected_game_id):
-                    refresh_interval = 60  # 1 minute during halftime
-                else:
-                    refresh_interval = 3  # 5 seconds during regular play
-
-                for i in range(refresh_interval, 0, -1):
-                    if is_halftime(st.session_state.selected_game_id):
-                        refresh_placeholder.markdown(f"🏀 Halftime - Next refresh in **{i}** seconds")
-                    else:
-                        refresh_placeholder.markdown(f"🔄 Next refresh in **{i}** seconds")
-                    time.sleep(1)
-                update_display()  # Update the display
+                update_display()
+                time.sleep(1)# Update the display
                 game_over = is_game_over(st.session_state.selected_game_id)
 
             st.write("Game has ended. Final plays displayed above.")
