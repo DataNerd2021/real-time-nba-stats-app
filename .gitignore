@@ -2,3 +2,6 @@
 *.pyo
 .env
 venv/
+Airflow/logs/
+Airflow/logs/*
+venv3.11/
