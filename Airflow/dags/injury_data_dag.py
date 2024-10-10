@@ -3,14 +3,17 @@ from datetime import datetime, timedelta
 from sqlalchemy import create_engine
 from airflow.decorators import dag, task
 import psycopg2
+import os
+import dotenv
 
+load_dotenv()
 
 def get_postgres_con():
     conn_params = {
-    "host": "45.79.115.9",
-    "database": "NbaData",
-    "user": "postgres",
-    "password": "Saloranta-98",
+    "host": os.getenv('server_ip'),
+    "database": 'NbaData',
+    "user": os.getenv('postgres_user'),
+    "password": os.getenv('postgres_password'),
     "port": 15432 
     }
     conn_str = f"postgresql+psycopg2://{conn_params['user']}:{conn_params['password']}@{conn_params['host']}:{conn_params['port']}/{conn_params['database']}"

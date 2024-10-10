@@ -13,3 +13,4 @@ psycopg2
 # Specify the version of apache-airflow you want to install
 apache-airflow==2.10.2
 kafka-python
+python-dotenv
