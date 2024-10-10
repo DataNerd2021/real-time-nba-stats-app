@@ -42,20 +42,6 @@ st.markdown("""
         }
         .emoji {
             font-size: 4em;
-        }
-        .stButton > button {
-            width: auto;
-            display: inline-block;
-            margin: 5px;
-            padding: 0.5em 1em;
-        }
-        .button-container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            align-items: center;
-            width: 100%;
-        }
     </style>
     """, unsafe_allow_html=True)
 
@@ -64,7 +50,7 @@ st.markdown("""<div class="title-container">
                 <span class="title-text">Real-Time NBA Stats App (Beta)</span>
                </div>""", unsafe_allow_html=True)
 
-st.markdown("<h6 style='text-align: center; margin-top: 10px;'>This app allows you to search for NBA games and view real-time plays for those games.</h3>", unsafe_allow_html=True)
+st.markdown("<h5 style='text-align: center; margin-top: 10px;'>This app allows you to search for NBA games and view real-time plays for those games.</h3>", unsafe_allow_html=True)
 
 def is_game_over(game_id):
     try:
@@ -144,7 +130,7 @@ else:
             home_team = get_team_name(home_team_id)
             away_team = get_team_name(away_team_id)
             label = f"{home_team} vs. {away_team} ({game_time_str.strip()})"
-            st.button(label=label, key=f"game_{game_id}", on_click=set_game_state, args=(game_id, label, home_team, away_team))
+            st.button(label=label, key=f"game_{game_id}", on_click=set_game_state, args=(game_id, label, home_team, away_team), use_container_width=True)
 
 
 
@@ -223,8 +209,9 @@ else:
                             latest_play = df.iloc[0]
                             score_placeholder.info(f"Current Score: {st.session_state.home_team} {latest_play['scoreHome']} - {st.session_state.away_team} {latest_play['scoreAway']}")
 
+                            df.drop(columns=['scoreHome', 'scoreAway'], inplace=True)
                             # Display selected columns
-                            df_placeholder.dataframe(df, hide_index=True)
+                            df_placeholder.dataframe(df, hide_index=True, use_container_width=True)
                         else:
                             st.write("No plays found for this game.")
                     else:
