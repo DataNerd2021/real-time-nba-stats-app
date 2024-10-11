@@ -137,6 +137,7 @@ else:
 
     if 'selected_game_id' in st.session_state:
         if st.button("View Game Plays"):
+            
             game_over = is_game_over(st.session_state.selected_game_id)
 
             # Create placeholders for the score, DataFrame, and refresh timer
@@ -155,7 +156,19 @@ else:
                     consumer.subscribe(['nba-plays'])
                     start_time = time.time()
                     
-                    while time.time() - start_time < 5:
+                    while time.time() - start_time < 3:
+                        json_obj = json.loads(boxscore.BoxScore(game_id=st.session_state.selected_game_id).get_json())
+                        home_players = [player['name'] for player in json_obj['game']['homeTeam']['players'] if player['oncourt'] == '1']
+                        away_players = [player['name'] for player in json_obj['game']['awayTeam']['players'] if player['oncourt'] == '1']
+
+                        if 'current_players' not in st.session_state:
+                            st.session_state.current_players = {}
+                        
+                        if st.session_state.current_players.get('home') != home_players or st.session_state.current_players.get('away') != away_players:
+                            st.session_state.current_players['home'] = home_players
+                            st.session_state.current_players['away'] = away_players
+                            st.markdown(f'<b>{st.session_state.home_team}</b>: {", ".join(home_players)}', unsafe_allow_html=True)
+                            st.markdown(f'<b>{st.session_state.away_team}</b>: {", ".join(away_players)}', unsafe_allow_html=True)
                         msg = consumer.poll(0.1)
                         if msg is None:
                             continue
@@ -211,6 +224,8 @@ else:
 
                             df.drop(columns=['scoreHome', 'scoreAway'], inplace=True)
                             # Display selected columns
+                            
+                            
                             df_placeholder.dataframe(df, hide_index=True, use_container_width=True)
                         else:
                             st.write("No plays found for this game.")

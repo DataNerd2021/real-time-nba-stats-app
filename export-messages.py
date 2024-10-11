@@ -2,6 +2,7 @@ from confluent_kafka import Consumer, KafkaError, TopicPartition, OFFSET_BEGINNI
 import json
 import time
 import sys
+import io
 
 # Kafka configuration
 kafka_config = {
@@ -52,7 +53,7 @@ try:
         except Exception as e:
             print(f"Error seeking partition {tp.partition}: {str(e)}")
     while True:
-        with open(output_file, 'w') as f:
+        with io.open(output_file, 'w', encoding='utf-8') as f:
             # Read all existing messages
             print("Reading existing messages...")
             message_count = 0
