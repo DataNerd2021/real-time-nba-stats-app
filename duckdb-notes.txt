@@ -1,0 +1,29 @@
+- START THE CLI
+    - ./duckdb
+- EXIT THE CLI
+    - Ctrl + D
+- CREATE A DATABASE
+    - ./duckdb [DATABASE_NAME].duckdb
+    - [IN CLI]: .open [DATABASE_NAME].duckdb
+        - If the database already exists, it will connect to the database, otherwise it will create a new database.
+- OPEN A DATABASE CONNECTION
+    - [IN CLI]: .open [DATABASE_NAME].duckdb
+    - [READ-ONLY]: .open --read-only [DATABASE_NAME].duckdb
+        - TO open a database connection in read-only mode, the database must already exist.
+- RUN A BASIC SQL STATEMENT IN THE CLI
+    - SELECT * FROM [TABLE_NAME];
+- OUTPUT FORMATS
+    - The ".mode" dot command can be used to change the appearance of the tables returned in the Terminal. These include default "duckbox" mode, "csv" and "json" mode for ingestion by other tools, "markdown" and "latex" for documents, and "insert" mode for generating SQL statements.
+- S3 SECRETS
+    - TO create a secret for an S3 bucket, use the following command:
+        - CREATE SECRET [SECRET_NAME] (
+            TYPE S3,
+            KEY_ID '[KEY_ID]',
+            SECRET '[SECRET]',
+            REGION '[REGION]'
+        );
+            - If you get an IO error (Connection error for HTTP HEAD), configure the endpoint explicitly via "ENDPOINT 's3.[REGION].amazonaws.com'".
+- QUERY AN S3 BUCKET
+    - SELECT * FROM 's3://[BUCKET_NAME]/[FILE_PATH]';
+        - duckDB will automatically use the secret created for the bucket to access the data.
+
