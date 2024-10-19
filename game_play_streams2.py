@@ -1,8 +1,8 @@
 from confluent_kafka import Producer
 from datetime import date
 from nba_api.stats.endpoints import scoreboardv2
-from nba_api.live.nba.endpoints import boxscore, playbyplay
 import json
+from nba_api.live.nba.endpoints import boxscore, playbyplay
 import time
 import os
 import requests
