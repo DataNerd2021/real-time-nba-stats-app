@@ -5,9 +5,9 @@ from nba_api.stats.endpoints import scoreboardv2, teamdetails
 from nba_api.live.nba.endpoints import boxscore
 import json
 import time
-from datetime import datetime
+from datetime import datetime, date
 import pytz
-import sqlite3
+import duckdb
 from requests import ReadTimeout, ConnectionError
 
 # Kafka configuration
@@ -16,11 +16,6 @@ kafka_config = {
     'group.id': 'streamlit_app',
     'auto.offset.reset': 'latest'
 }
-
-# Database connection
-db_name = 'nba_plays.db'
-conn = sqlite3.connect(db_name)
-cursor = conn.cursor()
 
 # Initialize Kafka consumer
 consumer = Consumer(kafka_config)
@@ -57,7 +52,10 @@ def is_game_over(game_id):
         box = boxscore.BoxScore(game_id)
         game_data = box.get_dict()
         game_status = game_data['game']['gameStatus']
-        return game_status == 3  # 3 indicates the game has ended
+        if game_status == 3:
+            return True
+        else:
+            return False
     except Exception as e:
         print(f"Error checking game status for {game_id}: {str(e)}")
         return False
@@ -66,22 +64,18 @@ def is_halftime(game_id):
         box = boxscore.BoxScore(game_id)
         game_data = box.get_dict()
         period = game_data['game']['period']
-        clock_running = game_data['game']['gameStatusText']
-        return period == 2 and clock_running == 'Halftime'
+        game_status = game_data['game']['gameStatus']
+        if game_status == 2:
+            return True
+        else:
+            return False
     except Exception as e:
         print(f"Error checking halftime status for {game_id}: {str(e)}")
         return False
 
-def get_all_plays_from_db(game_id):
-    conn = sqlite3.connect(db_name)
-    cursor = conn.cursor()
-    cursor.execute('''
-    SELECT * FROM plays
-    WHERE game_id = ?
-    ORDER BY action_number DESC
-    ''', (game_id,))
-    plays = cursor.fetchall()
-    conn.close()
+def get_all_plays_from_file(game_id):
+    today = date.today().strftime('%Y-%m-%d')
+    plays = duckdb.sql(f'SELECT * FROM read_json("Game Plays\\{game_id}_{today}.jsonl", auto_detect=True)')
     return plays
 
 @st.cache_data(ttl=3600)
@@ -151,7 +145,7 @@ else:
                             'team_id', 'teamTricode', 'actionType', 'subType', 'descriptor',
                             'qualifiers', 'personId', 'x', 'y', 'possession', 'scoreHome', 'scoreAway', 'description'
                         ]
-                all_plays = get_all_plays_from_db(st.session_state.selected_game_id)
+                all_plays = get_all_plays_from_file(st.session_state.selected_game_id)
                 if not game_over:
                     consumer.subscribe(['nba-plays'])
                     start_time = time.time()
