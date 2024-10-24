@@ -48,7 +48,7 @@ st.markdown("""<div class="title-container">
                 <span class="title-text">Real-Time NBA Stats App (Beta)</span>
                </div>""", unsafe_allow_html=True)
 
-st.markdown("<h5 style='text-align: center; margin-top: 10px;'>This app allows you to search for NBA games and view real-time plays for those games.</h3>", unsafe_allow_html=True)
+st.markdown("<h5 style='text-align: center; margin-top: 10px;'>This app allows you to select an NBA game scheduled for today and view real-time plays and team-level statistics for those games.</h3>", unsafe_allow_html=True)
 
 def is_game_over(game_id):
     try:
@@ -61,6 +61,7 @@ def is_game_over(game_id):
             return False
     except Exception as e:
         print(f"Error checking game status for {game_id}: {str(e)}")
+        st.write(f'Game is not scheduled to start until {st.session_state.game_time}.')
         return False
 
 def is_halftime(game_id):
@@ -77,13 +78,7 @@ def is_halftime(game_id):
         print(f"Error checking halftime status for {game_id}: {str(e)}")
         return False
 
-def get_all_plays_from_file(game_id):
-    today = date.today().strftime('%Y-%m-%d')
-    try:
-        plays = duckdb.sql(f"SELECT * FROM read_json('Game Plays/{game_id}_{today}.jsonl', auto_detect=True)")
-    except IOError:
-        st.write('Game has not started yet. Please check later.')
-    return plays
+
 
 @st.cache_data(ttl=3600)
 def get_team_name(team_id, max_retries=3, delay=2):
@@ -103,144 +98,76 @@ def get_team_name(team_id, max_retries=3, delay=2):
             st.error(f"An unexpected error occurred: {str(e)}")
             return f"Team ID {team_id}"
 
-def get_all_previous_plays(game_id):
-    consumer = Consumer(kafka_config)
-    consumer.subscribe(['nba-game-plays'])
 
-    plays = []
-    start_time = time.time()
-
-    while time.time() - start_time < 10:  # Poll for 10 seconds to get historical data
-        msg = consumer.poll(0.1)
-        if msg is None:
-            continue
-        if msg.error():
-            if msg.error().code() == KafkaError._PARTITION_EOF:
-                continue
-            else:
-                st.error(f"Error: {msg.error()}")
-                break
-
-        play_data = json.loads(msg.value().decode('utf-8'))
-        if play_data['gameId'] == game_id:
-            plays.append(play_data)
-
-    consumer.close()
-    return plays
 def update_display():
-                columns = [
-                            'game_id', 'action_number', 'clock', 'timeActual', 'period', 'periodType',
-                            'team_id', 'teamTricode', 'actionType', 'subType', 'descriptor',
-                            'qualifiers', 'personId', 'x', 'y', 'possession', 'scoreHome', 'scoreAway', 'description'
-                        ]
-                all_plays = get_all_plays_from_file(st.session_state.selected_game_id)
-                if not game_over:
-                    consumer = Consumer(kafka_config)
-                    consumer.subscribe(['nba-plays'])
-                    start_time = time.time()
+    columns = [
+        'game_id', 'action_number', 'clock', 'timeActual', 'period', 'periodType',
+        'team_id', 'teamTricode', 'actionType', 'subType', 'descriptor',
+        'qualifiers', 'personId', 'x', 'y', 'possession', 'scoreHome', 'scoreAway', 'description'
+                ]
+    df = pd.DataFrame(columns=columns)
+    game_over = is_game_over(st.session_state.selected_game_id)
+    score_placeholder = st.empty()
+    if not game_over:
+        consumer = Consumer(kafka_config)
+        consumer.subscribe(['nba-game-plays'])
+        start_time = time.time()
                     
-                    try:
-                        while time.time() - start_time < 3:
-                            msg = consumer.poll(0.1)
-                            if msg is None:
-                                continue
-                            if msg.error():
-                                if msg.error().code() == KafkaError._PARTITION_EOF:
-                                    continue
-                                else:
-                                    st.error(f"Error: {msg.error()}")
-                                    break
+        try:
+            while time.time() - start_time < 3:
+                msg = consumer.poll(0.1)
+                if msg is None:
+                    continue
+                if msg.error():
+                    print(f'{msg.error()}')
 
-                            play_data = json.loads(msg.value().decode('utf-8'))
-                            if play_data['gameId'] == st.session_state.selected_game_id:
-                                play_tuple = tuple(play_data.get(col, None) for col in columns)
-                                all_plays.append(play_tuple)
-                    finally:
-                        consumer.close()
+                new_play = json.loads(msg.value().decode('utf-8'))
+                if new_play['gameId'] == st.session_state.selected_game_id:
+                    df = pd.concat([df, new_play], ignore_index=True)
+        finally:
+            consumer.close()
 
-                    if all_plays:
-                        
-                        df = pd.DataFrame(all_plays, columns=columns)
+        df_placeholder = st.empty()
+        
+    else:
+        consumer = Consumer(kafka_config)
+        consumer.subscribe(['nba-plays'])
+        plays = []
+        start_time = time.time()
 
-                        # Convert 'qualifiers' from JSON string to list
-                        df['qualifiers'] = df['qualifiers'].apply(lambda x: json.loads(x) if isinstance(x, str) else x)
-
-                        # Clean up 'clock' field
-                        df['clock'] = df['clock'].apply(lambda x: x.replace('PT', '').replace('M', ':').replace('S', '') if isinstance(x, str) else x)
-
-                        # Add 'Court Coordinates' column
-                        df['Court Coordinates'] = df.apply(lambda row: f"({row['x']}, {row['y']})" if pd.notnull(row['x']) and pd.notnull(row['y']) else None, axis=1)
-
-                        # Rename columns
-                        df = df.rename(columns={
-                            'period': 'Period',
-                            'clock': 'Time Remaining',
-                            'teamTricode': 'Team',
-                            'description': 'Play Description',
-                            'actionType': 'Action Type',
-                            'subType': 'Action Subtype',
-                            'descriptor': 'Descriptor',
-                            'qualifiers': 'Tags'
-                        })
-
-                        # Reorder columns
-                        columns_order = [
-                            'Period', 'Time Remaining', 'Team', 'Play Description', 'Action Type', 'Action Subtype',
-                            'Descriptor', 'Tags', 'Court Coordinates', 'scoreHome', 'scoreAway'
-                        ]
-                        df = df[columns_order]
-                        
-                        df = df.sort_values(by=['Period', 'Time Remaining'], ascending=[False, True])
-
-                        if not df.empty:
-                            latest_play = df.iloc[0]
-                            score_placeholder.header(f"Current Score: {st.session_state.home_team} {latest_play['scoreHome']} - {st.session_state.away_team} {latest_play['scoreAway']}")
-
-                            # Display selected columns
-                            df_placeholder.dataframe(df, hide_index=True)
-                        else:
-                            st.write("No plays found for this game.")
-                    else:
-                        st.write("No plays found for this game in the database.")
+        while time.time() - start_time < 3:  # Poll for 5 seconds
+            msg = consumer.poll(0.1)
+            if msg is None:
+                continue
+            if msg.error():
+                if msg.error().code() == KafkaError._PARTITION_EOF:
+                    continue
                 else:
-                    consumer = Consumer(kafka_config)
-                    consumer.subscribe(['nba-plays'])
-                    plays = []
-                    start_time = time.time()
+                    st.error(f"Error: {msg.error()}")
+                    break
 
-                    while time.time() - start_time < 3:  # Poll for 5 seconds
-                        msg = consumer.poll(0.1)
-                        if msg is None:
-                            continue
-                        if msg.error():
-                            if msg.error().code() == KafkaError._PARTITION_EOF:
-                                continue
-                            else:
-                                st.error(f"Error: {msg.error()}")
-                                break
+            play_data = json.loads(msg.value().decode('utf-8'))
+            if play_data['gameId'] == st.session_state.selected_game_id:
+                plays.append(play_data)
 
-                        play_data = json.loads(msg.value().decode('utf-8'))
-                        if play_data['gameId'] == st.session_state.selected_game_id:
-                            plays.append(play_data)
+                consumer.close()
 
-                    consumer.close()
+            if plays:
+                df = pd.DataFrame(plays)
+                df = format_dataframe(df)
 
-                    if plays:
-                        df = pd.DataFrame(plays)
-                        df = format_dataframe(df)
+                if not df.empty:
+                    latest_play = df.iloc[0]
+                    if 'scoreHome' in latest_play and 'scoreAway' in latest_play:
+                        score_placeholder.header(f"Current Score: {st.session_state.home_team} {latest_play['scoreHome']} - {st.session_state.away_team} {latest_play['scoreAway']}")
 
-                        if not df.empty:
-                            latest_play = df.iloc[0]
-                            if 'scoreHome' in latest_play and 'scoreAway' in latest_play:
-                                score_placeholder.header(f"Current Score: {st.session_state.home_team} {latest_play['scoreHome']} - {st.session_state.away_team} {latest_play['scoreAway']}")
-
-                            st.subheader("Latest Plays")
-                            df_placeholder.dataframe(df, hide_index=True)
-                        else:
-                            df_placeholder.dataframe(df, hide_index=True)
-                            df_placeholder.write("No new plays in the last 5 seconds.")
+                        st.subheader("Latest Plays")
+                        df_placeholder.dataframe(df, hide_index=True)
                     else:
+                        df_placeholder.dataframe(df, hide_index=True)
                         df_placeholder.write("No new plays in the last 5 seconds.")
+                else:
+                    df_placeholder.write("No new plays in the last 5 seconds.")
 def format_dataframe(df):
     # Clean up 'clock' field if it exists
     if 'clock' in df.columns:
@@ -573,52 +500,23 @@ else:
                 st.session_state.selected_game_label = label
                 st.session_state.home_team = home_team
                 st.session_state.away_team = away_team
+                st.session_state,game_time = game_time_str
 
 
 
     if 'selected_game_id' in st.session_state:
         if st.button("View Game Plays"):
-            game_over = is_game_over(st.session_state.selected_game_id)
-
-            # Create placeholders for the score, DataFrame, and refresh timer
-            score_placeholder = st.empty()
-            df_placeholder = st.empty()
-            refresh_placeholder = st.empty()
-
-            # Get all previous plays
-            previous_plays = get_all_previous_plays(st.session_state.selected_game_id)
-            if previous_plays:
-                df_previous = pd.DataFrame(previous_plays)
-                df_previous = format_dataframe(df_previous)
-                df_previous = df_previous.sort_values('Time Remaining', ascending=False)
-
-                if not df_previous.empty:
-                    latest_play = df_previous.iloc[0]
-                    if 'scoreHome' in latest_play and 'scoreAway' in latest_play:
-                        score_placeholder.header(f"Current Score: {st.session_state.home_team} {latest_play['scoreHome']} - {st.session_state.away_team} {latest_play['scoreAway']}")
-
-                    st.subheader("Previous Plays")
-                    df_placeholder.dataframe(df_previous, hide_index=True)
-                else:
-                    st.write("No previous plays found for this game.")
-            else:
-                st.write("No previous plays found for this game.")
-
+            if json.JSONDecodeError:
+                st.write('Game has not started yet. To try again, click the "View Game Plays" button again or check the start time on the original menu button.')
             
 
             # Polling loop
+            game_over = is_game_over(st.session_state.selected_game_id)
             while not game_over:
                 if is_halftime(st.session_state.selected_game_id):
                     refresh_interval = 60  # 1 minute during halftime
                 else:
                     refresh_interval = 3  # 5 seconds during regular play
-
-                for i in range(refresh_interval, 0, -1):
-                    if is_halftime(st.session_state.selected_game_id):
-                        refresh_placeholder.markdown(f"🏀 Halftime - Next refresh in **{i}** seconds")
-                    else:
-                        refresh_placeholder.markdown(f"🔄 Next refresh in **{i}** seconds")
-                    time.sleep(1)
                 update_display()  # Update the display
                 game_over = is_game_over(st.session_state.selected_game_id)
 

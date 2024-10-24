@@ -1,91 +1,78 @@
+import pandas as pd
 import streamlit as st
 import time
-import pandas as pd
-from confluent_kafka import Consumer
-import duckdb
-import json
+from nba_api.stats.endpoints import PlayByPlay
 
-def create_kafka_consumer(bootstrap_servers, group_id, topic):
-    consumer_conf = {
-        'bootstrap.servers': bootstrap_servers,
-        'group.id': group_id,
-        'auto.offset.reset': 'earliest',
-    }
-    
-    consumer = Consumer(consumer_conf)
-    consumer.subscribe([topic])
-    
-    return consumer
+# Define a generator to fetch play-by-play data
+def fetch_play_by_play_data(game_id):
+    """
+    Fetches play-by-play data for a given game ID from the NBA API.
 
-def consume_messages(consumer, timeout=1.0):
-    records = []
-    while True:
-        msg = consumer.poll(timeout)
-        if msg is None:
-            break
-        if msg.error():
-            print(f"Error: {msg.error()}")
-            continue
-        
-        # Parse the message as JSON
-        value = json.loads(msg.value().decode('utf-8'))
-        records.append(value)
-    
-    # Convert records to a DataFrame for display
-    if records:
-        df = pd.DataFrame(records)
-        return df
-    else:
-        return pd.DataFrame()
+    Args:
+    - game_id: The ID of the game to fetch play-by-play data for.
 
-# Streamlit App
-def run_streamlit_app():
-    # Kafka setup
-    bootstrap_servers = 'localhost:9092'  # Adjust for your setup
-    group_id = 'streamlit_app'
-    topic = 'nba-game-plays'
+    Yields:
+    - dict: A dictionary representing a play's details.
+    """
+    pbp = PlayByPlay(game_id=game_id)
+    plays = pbp.get_data_frames()[0]  # Fetch the first DataFrame
 
-    # Create Kafka Consumer
-    consumer = create_kafka_consumer(bootstrap_servers, group_id, topic)
+    # Iterate over each play and yield relevant information
+    for _, row in plays.iterrows():
+        yield {
+            'game_id': row['GAME_ID'],
+            'action_number': row['ACTION_NUMBER'],
+            'clock': row['CLOCK'],
+            'timeActual': row['TIME_REMAINING'],
+            'period': row['PERIOD'],
+            'periodType': row['PERIOD_TYPE'],
+            'team_id': row['TEAM_ID'],
+            'teamTricode': row['TEAM_TRICODE'],
+            'actionType': row['ACTION_TYPE'],
+            'subtype': row['SUB_TYPE'],
+            'descriptor': row['DESCRIPTION'],
+            'qualifiers': row['QUALIFIERS'],
+            'person_id': row['PERSON_ID'],
+            'x': row['X'],
+            'y': row['Y'],
+            'possession': row['POSSESSION'],
+            'scoreHome': row['SCORE_HOME'],
+            'scoreAway': row['SCORE_AWAY'],
+            'description': row['DESCRIPTION']
+        }
 
-    st.title("Real-time Kafka Message Viewer")
-    st.subheader("Displaying messages as they're ingested into the DataFrame")
+# Streamlit App to display the play-by-play data
+def run_streamlit_simulation():
+    st.title("NBA Play-by-Play Data Stream")
+    st.subheader("Fetching play-by-play data from NBA API in real-time")
 
-    # Create an empty placeholder for the DataFrame
+    game_id = st.text_input("Enter Game ID:", value="0022300012")  # Example game ID
+    if not game_id:
+        st.warning("Please enter a valid Game ID.")
+        return
+
+    # Streamlit placeholder for displaying the DataFrame
     placeholder = st.empty()
-    
-    # Real-time loop to fetch and display messages
-    df = pd.DataFrame()
-    
-    while True:
-        # Consume messages
-        new_df = consume_messages(consumer)
-        
-        # Append new messages to the existing DataFrame
-        df = pd.concat([df, new_df], ignore_index=True)
-        
-        if not df.empty:
-            # Use DuckDB to explode nested fields
-            query = """
-            SELECT * EXCLUDE (qualifiers, players),
-                   qualifiers.value AS qualifiers,
-                   players.playerName,
-                   players.personId,
-                   players.teamId,
-                   players.teamTricode,
-                   players.playerPosition
-            FROM df,
-                 UNNEST(qualifiers) AS qualifiers,
-                 UNNEST(players) AS players
-            WHERE gameId = '0022400061'
-            """
-            exploded_df = duckdb.sql(query).to_df()
-            
-            # Display the updated DataFrame in the Streamlit app
-            placeholder.dataframe(exploded_df)
-        
-        # Sleep before fetching new messages
-        time.sleep(2)
 
+    # Create an empty DataFrame to store play-by-play data
+    df = pd.DataFrame(columns=[
+        'game_id', 'action_number', 'clock', 'timeActual', 'period',
+        'periodType', 'team_id', 'teamTricode', 'actionType', 'subtype',
+        'descriptor', 'qualifiers', 'person_id', 'x', 'y', 'possession',
+        'scoreHome', 'scoreAway', 'description'
+    ])
+
+    # Fetch play-by-play data
+    try:
+        for play in fetch_play_by_play_data(game_id):
+            # Append the new play data to the DataFrame
+            df = pd.concat([df, pd.DataFrame([play])], ignore_index=True)
+            # Update the DataFrame display in the Streamlit app
+            placeholder.dataframe(df)
+            time.sleep(0.5)  # Add a delay to simulate real-time updates
+    except Exception as e:
+        st.error(f"Error fetching data: {e}")
+
+# Run the Streamlit app
 if __name__ == "__main__":
-    run_streamlit_app()
+    run_streamlit_simulation()
