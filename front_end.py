@@ -43,11 +43,11 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# Page Title and Subtitle
 st.markdown("""<div class="title-container">
                 <span class="emoji">🏀</span>
                 <span class="title-text">Real-Time NBA Stats App (Beta)</span>
                </div>""", unsafe_allow_html=True)
-
 st.markdown("<h5 style='text-align: center; margin-top: 10px;'>This app allows you to select an NBA game scheduled for today and view real-time plays and team-level statistics for those games.</h3>", unsafe_allow_html=True)
 
 def is_game_over(game_id):
@@ -68,7 +68,6 @@ def is_halftime(game_id):
     try:
         box = boxscore.BoxScore(game_id)
         game_data = box.get_dict()
-        period = game_data['game']['period']
         game_status = game_data['game']['gameStatus']
         if game_status == 2:
             return True
@@ -500,27 +499,19 @@ else:
                 st.session_state.selected_game_label = label
                 st.session_state.home_team = home_team
                 st.session_state.away_team = away_team
-                st.session_state,game_time = game_time_str
+                st.session_state.game_time = game_time_str
 
 
 
     if 'selected_game_id' in st.session_state:
         if st.button("View Game Plays"):
-            if json.JSONDecodeError:
-                st.write('Game has not started yet. To try again, click the "View Game Plays" button again or check the start time on the original menu button.')
             
-
             # Polling loop
             game_over = is_game_over(st.session_state.selected_game_id)
-            while not game_over:
-                if is_halftime(st.session_state.selected_game_id):
-                    refresh_interval = 60  # 1 minute during halftime
-                else:
-                    refresh_interval = 3  # 5 seconds during regular play
-                update_display()  # Update the display
-                game_over = is_game_over(st.session_state.selected_game_id)
 
-            st.write("Game has ended. Final plays displayed above.")
+            if game_over:
+                update_display()
+                st.write("Game has ended. Final plays displayed above.")
         elif st.button('View Team Statistics', key='view_stats'):
             st.session_state.viewing_stats = True
             game_over = is_game_over(st.session_state.selected_game_id)
