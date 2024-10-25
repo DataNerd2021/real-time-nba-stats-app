@@ -103,39 +103,18 @@ def update_display():
         'game_id', 'action_number', 'clock', 'timeActual', 'period', 'periodType',
         'team_id', 'teamTricode', 'actionType', 'subType', 'descriptor',
         'qualifiers', 'personId', 'x', 'y', 'possession', 'scoreHome', 'scoreAway', 'description'
-                ]
+    ]
     df = pd.DataFrame(columns=columns)
     game_over = is_game_over(st.session_state.selected_game_id)
     score_placeholder = st.empty()
-    if not game_over:
-        consumer = Consumer(kafka_config)
-        consumer.subscribe(['nba-game-plays'])
-        start_time = time.time()
-                    
-        try:
-            while time.time() - start_time < 3:
-                msg = consumer.poll(0.1)
-                if msg is None:
-                    continue
-                if msg.error():
-                    print(f'{msg.error()}')
+    df_placeholder = st.empty()
 
-                new_play = json.loads(msg.value().decode('utf-8'))
-                if new_play['gameId'] == st.session_state.selected_game_id:
-                    df = pd.concat([df, new_play], ignore_index=True)
-        finally:
-            consumer.close()
-
-        df_placeholder = st.empty()
-        
-    else:
-        consumer = Consumer(kafka_config)
-        consumer.subscribe(['nba-plays'])
-        plays = []
-        start_time = time.time()
-
-        while time.time() - start_time < 3:  # Poll for 5 seconds
-            msg = consumer.poll(0.1)
+    consumer = Consumer(kafka_config)
+    consumer.subscribe(['nba-game-plays'])
+    
+    try:
+        while True:
+            msg = consumer.poll(1.0)
             if msg is None:
                 continue
             if msg.error():
@@ -145,28 +124,25 @@ def update_display():
                     st.error(f"Error: {msg.error()}")
                     break
 
-            play_data = json.loads(msg.value().decode('utf-8'))
-            if play_data['gameId'] == st.session_state.selected_game_id:
-                plays.append(play_data)
-
-                consumer.close()
-
-            if plays:
-                df = pd.DataFrame(plays)
-                df = format_dataframe(df)
-
+            new_play = json.loads(msg.value().decode('utf-8'))
+            if new_play['gameId'] == st.session_state.selected_game_id:
+                df = pd.concat([duckdb.sql("SELECT * FROM new_play".to_df()), df], ignore_index=True)
+                
                 if not df.empty:
-                    latest_play = df.iloc[0]
+                    formatted_df = format_dataframe(df.copy())  # Format a copy of the dataframe
+                    latest_play = formatted_df.iloc[0]
                     if 'scoreHome' in latest_play and 'scoreAway' in latest_play:
                         score_placeholder.header(f"Current Score: {st.session_state.home_team} {latest_play['scoreHome']} - {st.session_state.away_team} {latest_play['scoreAway']}")
 
-                        st.subheader("Latest Plays")
-                        df_placeholder.dataframe(df, hide_index=True)
-                    else:
-                        df_placeholder.dataframe(df, hide_index=True)
-                        df_placeholder.write("No new plays in the last 5 seconds.")
-                else:
-                    df_placeholder.write("No new plays in the last 5 seconds.")
+                df_placeholder.dataframe(formatted_df, hide_index=True)
+
+            if game_over:
+                st.write("Game has ended. Final plays displayed above.")
+                break
+
+    finally:
+        consumer.close()
+
 def format_dataframe(df):
     # Clean up 'clock' field if it exists
     if 'clock' in df.columns:
@@ -191,8 +167,8 @@ def format_dataframe(df):
 
     # Reorder columns
     columns_order = [
-        'Period', 'Time Remaining', 'Team', 'Play Description', 'Action Type', 'Action Subtype',
-        'Descriptor', 'Tags', 'Court Coordinates', 'scoreHome', 'scoreAway'
+        'Period', 'Time Remaining', 'Team', 'Play Description',
+        'Descriptor', 'Tags', 'Court Coordinates'
     ]
     df = df[[col for col in columns_order if col in df.columns]]
 
@@ -309,8 +285,8 @@ def update_stats_display():
                                     ORDER BY PIE DESC
                                     LIMIT 1)
                                     
-                                    SELECT player_name
-                                    FROM mvp""").to_df().values.tolist()[0]
+                                    SELECT "Team MVP"
+                                    FROM mvp""").to_df().values.tolist()[0][0]
                 
                 away_mvp = duckdb.sql(f"""
                                     WITH away_players AS(
@@ -329,20 +305,20 @@ def update_stats_display():
                                     SELECT 
                                         away_team.team_name AS team_name,
                                         player_name AS 'Team MVP', 
-                                        MAX((player_stats.points::FLOAT + player_stats.fieldGoalsMade::FLOAT + player_stats.freeThrowsMade::FLOAT - player_stats.fieldGoalsAttempted::FLOAT 
+                                        ROUND(MAX((player_stats.points::FLOAT + player_stats.fieldGoalsMade::FLOAT + player_stats.freeThrowsMade::FLOAT - player_stats.fieldGoalsAttempted::FLOAT 
                                         - player_stats.freeThrowsAttempted::FLOAT + player_stats.reboundsDefensive::FLOAT + (player_stats.reboundsOffensive::FLOAT/2::FLOAT) + player_stats.assists::FLOAT 
                                         + player_stats.steals::FLOAT + (player_stats.blocks::FLOAT/2::FLOAT) - player_stats.foulsPersonal::FLOAT - player_stats.turnovers::FLOAT)::FLOAT
                                             / 
                                         (away_team.points + away_team.fieldGoalsMade + away_team.freeThrowsMade - away_team.fieldGoalsAttempted - away_team.freeThrowsAttempted + away_team.reboundsDefensive 
-                                        + (away_team.reboundsOffensive::FLOAT/2::FLOAT) + away_team.assists + away_team.steals + (away_team.blocks::FLOAT/2::FLOAT) - away_team.foulsPersonal - away_team.turnovers)::FLOAT) AS 'PIE'
+                                        + (away_team.reboundsOffensive::FLOAT/2::FLOAT) + away_team.assists + away_team.steals + (away_team.blocks::FLOAT/2::FLOAT) - away_team.foulsPersonal - away_team.turnovers)::FLOAT), 2) AS 'PIE'
                                     FROM read_json('Game Statistics/{st.session_state.selected_game_id}_{today}.jsonl', auto_detect=True)
                                     CROSS JOIN away_player_stats
                                     GROUP BY home_team, away_team, player_name
                                     ORDER BY PIE DESC
                                     LIMIT 1)
                                     
-                                    SELECT player_name
-                                    FROM mvp""").to_df().values.tolist()[0]
+                                    SELECT "Team MVP"
+                                    FROM mvp""").to_df().values.tolist()[0][0]
 
                 st.markdown(f"""<div class="title-container">
                 <span class="title-text">{st.session_state.home_team} vs. {st.session_state.away_team} Stats Comparison</span>
@@ -504,45 +480,20 @@ else:
 
 
     if 'selected_game_id' in st.session_state:
-        if st.button("View Game Plays"):
-            
-            # Polling loop
-            game_over = is_game_over(st.session_state.selected_game_id)
+        if st.button("View Game Info", use_container_width=True):
+            st.session_state.viewing_game_info = True
 
-            if game_over:
+        if 'viewing_game_info' in st.session_state and st.session_state.viewing_game_info:
+            # Create tabs for Game Plays and Team Statistics
+            tab1, tab2 = st.tabs(["Game Plays", "Team Statistics"])
+
+            with tab1:
+                st.subheader("Game Plays")
                 update_display()
-                st.write("Game has ended. Final plays displayed above.")
-        elif st.button('View Team Statistics', key='view_stats'):
-            st.session_state.viewing_stats = True
-            game_over = is_game_over(st.session_state.selected_game_id)
 
-            # Create placeholders for the DataFrame
-            df_placeholder = st.empty()
-
-            
-            
-
-            try:
-                result = update_stats_display()
-                if result:
-                    categories, home_stats, away_stats, selected_categories, inverse_categories = result
-                if result:
-                    categories, home_stats, away_stats, selected_categories, inverse_categories = result
-                    fig = create_figure(categories, home_stats, away_stats, selected_categories, inverse_categories)
-                    st.plotly_chart(fig, use_container_width=True)
-                time.sleep(5)  # Update the display every 5 seconds
+            with tab2:
+                st.subheader("Team Statistics")
                 game_over = is_game_over(st.session_state.selected_game_id)
-            except IOException:
-                st.write('Game has not started yet. Please check game start time.')
-                
-            if game_over:
-                st.write("Game has ended. Final statistics displayed above.")
-        elif 'viewing_stats' in st.session_state and st.session_state.viewing_stats:
-            if st.button('Refresh Team Statistics', key='refresh_stats'):
-                game_over = is_game_over(st.session_state.selected_game_id)
-
-                # Create placeholders for the DataFrame
-                df_placeholder = st.empty()
 
                 try:
                     result = update_stats_display()
@@ -550,10 +501,12 @@ else:
                         categories, home_stats, away_stats, selected_categories, inverse_categories = result
                         fig = create_figure(categories, home_stats, away_stats, selected_categories, inverse_categories)
                         st.plotly_chart(fig, use_container_width=True)
-                    time.sleep(5)  # Update the display every 5 seconds
-                    game_over = is_game_over(st.session_state.selected_game_id)
                 except IOException:
                     st.write('Game has not started yet. Please check game start time.')
                     
                 if game_over:
                     st.write("Game has ended. Final statistics displayed above.")
+
+            if st.button("Refresh Game Info", use_container_width=True):
+                st.experimental_rerun()
+

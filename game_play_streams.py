@@ -1,115 +1,64 @@
-from nba_api.stats.endpoints import scoreboardv2
-from nba_api.live.nba.endpoints import playbyplay, boxscore
 from confluent_kafka import Producer
+from datetime import date
+from nba_api.stats.endpoints import scoreboardv2
 import json
+from nba_api.live.nba.endpoints import boxscore, playbyplay
 import time
-from datetime import datetime, date
-import threading
-import pytz
+import os
 import requests
-import sqlite3
+import threading
 
 # Kafka configuration
 conf = {
     'bootstrap.servers': 'localhost:9092',
-    'client.id': 'nba-play-producer'
-}
+    'client.id': 'nba-game-play-producer'}
 
 producer = Producer(conf)
 
-topic = 'nba-plays'
-
-# Database setup
-db_name = 'nba_plays.db'
-conn = sqlite3.connect(db_name, check_same_thread=False)
-cursor = conn.cursor()
-
-# Create table if it doesn't exist
-def create_table_if_not_exists(cursor):
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS plays (
-        game_id TEXT,
-        action_number INTEGER,
-        clock TEXT,
-        timeActual TEXT,
-        period INTEGER,
-        periodType TEXT,
-        team_id INTEGER,
-        teamTricode TEXT,
-        actionType TEXT,
-        subType TEXT,
-        descriptor TEXT,
-        qualifiers TEXT,
-        personId INTEGER,
-        x REAL,
-        y REAL,
-        possession INTEGER,
-        scoreHome TEXT,
-        scoreAway TEXT,
-        description TEXT,
-        PRIMARY KEY (game_id, action_number)
-    )
-    ''')
-    conn.commit()
-
-create_table_if_not_exists(cursor)
-
-def delivery_report(err, msg):
-    if err is not None:
-        print(f'Message delivery failed: {err}')
-    else:
-        print(f'Message delivered to {msg.topic()} [{msg.partition()}] with key {msg.key().decode("utf-8")}')
+topic = 'nba-game-plays'
 
 def get_todays_games():
+    """
+    Return a list of all games occuring today
+    """
     today = date.today().strftime('%Y-%m-%d')
-    print(today)
     scoreboard = scoreboardv2.ScoreboardV2(game_date=today)
-    games_data = json.loads(scoreboard.get_json())
-    games = games_data['resultSets'][0]['rowSet']
+    raw_games = json.loads(scoreboard.get_json())
+    games = raw_games['resultSets'][0]['rowSet']
     return [(game[2], f"{game[6]} vs {game[7]}") for game in games]
 
-def is_game_over(game_id):
+def is_game_over(game_id: str):
+    """
+    Determines whether or not a game is over
+    """
     try:
         box = boxscore.BoxScore(game_id)
-        game_data = box.get_dict()
-        game_status = game_data['game']['gameStatus']
-        return game_status == 3  # 3 indicates the game has ended
+        game = box.get_dict()
+        game_status = game['game']['gameStatus']
+        if game_status == 3:
+            return True
+        else:
+            return False
     except Exception as e:
         print(f"Error checking game status for {game_id}: {str(e)}")
         return False
 
-def insert_play(cursor, game_id, play):
-    cursor.execute('''
-    INSERT OR REPLACE INTO plays (
-        game_id, action_number, clock, timeActual, period, periodType,
-        team_id, teamTricode, actionType, subType, descriptor,
-        qualifiers, personId, x, y, possession, scoreHome, scoreAway, description
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        game_id, play.get('actionNumber'), play.get('clock'),
-        play.get('timeActual'), play.get('period'), play.get('periodType'),
-        play.get('teamId'), play.get('teamTricode'), play.get('actionType'),
-        play.get('subType'), play.get('descriptor'),
-        json.dumps(play.get('qualifiers')), play.get('personId'),
-        play.get('x'), play.get('y'), play.get('possession'),
-        play.get('scoreHome'), play.get('scoreAway'), play.get('description')
-    ))
-    conn.commit()
-
 def stream_game_plays(game_id, game_info):
+    """
+    Ingest game plays from Producer
+    """
     print(f"Starting to stream plays for game: {game_info}")
     last_event_num = 0
     consecutive_empty_responses = 0
-    max_empty_responses = 10  # Adjust this value as needed
-
+    max_empty_responses = 30
+    
     while True:
         try:
             if is_game_over(game_id):
                 print(f"Game {game_info} has ended. Stopping stream.")
                 break
-
-            pbp = playbyplay.PlayByPlay(game_id)
-            plays = pbp.get_dict().get('game', {}).get('actions', [])
+            raw_plays = playbyplay.PlayByPlay(game_id)
+            plays = raw_plays.get_dict().get('game', {}).get('actions', [])
             
             if not plays:
                 consecutive_empty_responses += 1
@@ -117,38 +66,55 @@ def stream_game_plays(game_id, game_info):
                     print(f"No new plays for game {game_info} after {max_empty_responses} attempts. Stopping stream.")
                     break
                 print(f"No plays available for game {game_info}. Waiting... (Attempt {consecutive_empty_responses})")
-                time.sleep(30)  # Wait longer if no plays are available
+                time.sleep(30)
                 continue
-
-            consecutive_empty_responses = 0  # Reset the counter when we get plays
+            consecutive_empty_responses = 0
             new_plays = [play for play in plays if play['actionNumber'] > last_event_num]
-
+            
             for play in new_plays:
-                play['gameId'] = game_id  # Add game_id to the play data
+                play['gameId'] = game_id
                 play_json = json.dumps(play)
-                key = f"{game_id}_{play['actionNumber']:05d}"
-                producer.produce(topic, key=key, value=play_json, callback=delivery_report)
+                message_key = f"{game_id}_{play['actionNumber']:05d}"
+                producer.produce(topic, key=message_key, value=play_json, callback=delivery_report)
                 producer.flush()
-                insert_play(cursor, game_id, play)  # Insert play into the database
-
+                add_game_play_to_json_file(game_id=game_id, play=play)
+                
                 last_event_num = max(last_event_num, play['actionNumber'])
-
             if len(new_plays) > 0:
                 print(f"Game {game_info}: Sent {len(new_plays)} new plays. Last event number: {last_event_num}")
             else:
                 print(f"No new plays for game {game_info}. Last event number: {last_event_num}")
-
         except json.JSONDecodeError as e:
-            print(f"JSON Decode Error for game {game_info}: {str(e)}")
-            time.sleep(10)  # Wait before retrying
+            print(f"JSON Decode error for game {game_info}. {str(e)}")
+            time.sleep(10)
         except requests.exceptions.RequestException as e:
             print(f"Network error for game {game_info}: {str(e)}")
-            time.sleep(30)  # Wait longer before retrying after a network error
         except Exception as e:
-            print(f"Error processing game {game_info}: {str(e)}")
-            time.sleep(10)  # Wait before retrying
+            print(f"Error processing game play: {str(e)}")
+            time.sleep(10)
+        
+        time.sleep(10)
+                
+def delivery_report(err, msg):
+    if err is None:
+        print(f"Game play ingested from {msg.key().decode('utf-8')[:10]}")
+    else:
+        print(f"Error ingesting message: {err}")
 
-        time.sleep(10)  # Poll for new plays every 10 seconds
+def add_game_play_to_json_file(game_id, play):
+    """
+    Add each ingested game play to an assigned json file
+    """
+    today = date.today().strftime('%Y-%m-%d')
+    filename = f"{game_id}_{today}.jsonl"
+    
+    os.makedirs('Game Plays', exist_ok=True)
+    file_path = os.path.join('Game Plays', filename)
+    
+    
+    with open(file_path, 'a') as f:
+        json.dump(play, f)
+        f.write('\n')
 
 def stream_all_games(games):
     threads = []
@@ -156,19 +122,16 @@ def stream_all_games(games):
         thread = threading.Thread(target=stream_game_plays, args=(game_id, game_info))
         threads.append(thread)
         thread.start()
-
-    # Wait for all game threads to complete
+    
     for thread in threads:
         thread.join()
-
+    
 if __name__ == "__main__":
     games = get_todays_games()
     if games:
-        print(f"Found {len(games)} games for today. Starting to stream all games...")
+        print(f"Found {len(games)} games. Strating to stream all games...")
         stream_all_games(games)
         print("All games have been streamed.")
     else:
         print("No games found for today.")
-
-    # Close the database connection
-    conn.close()
+    
